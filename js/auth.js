@@ -1,16 +1,13 @@
 // ============================================
-// 史貝斯商務中心日報系統 - Firebase Authentication 模組
+// 史貝斯商務中心日報系統 - 匿名登入 + 自定義認證模組
 // ============================================
-// 提供登入/登出/權限檢查功能
-// 支援管理員（master）與館別人員兩種角色
+// 完全不需要 Email！
+// 流程：匿名登入 → 館別代碼+密碼驗證 → Firestore users 記錄權限
 // ============================================
-
-// 館別帳號的 email 格式範例：tc_ck@space.com, tp_zx@space.com 等
-// 管理員帳號：master@space.com
 
 // ============ 內部狀態變數 ============
 
-/** 當前登入的 Firebase 用戶物件 */
+/** 當前登入的 Firebase User 物件 */
 let _currentUser = null;
 
 /** 從 Firestore users 集合載入的用戶資料（含 role, branchCode） */
@@ -28,25 +25,20 @@ let _useLocalAuth = false;
 /** 本地認證的 localStorage key */
 const LOCAL_AUTH_KEY = 'space_local_auth';
 
-// ============ 館別 Email 對照表 ============
-const BRANCH_EMAIL_MAP = {
-  'master@space.com': { role: 'master', name: '總管理者' },
-  'tc_ck@space.com': { role: 'branch', branchCode: 'TC_CK', name: '台中-中港館' },
-  'tc_yt@space.com': { role: 'branch', branchCode: 'TC_YT', name: '台中-英才館' },
-  'tc_cc@space.com': { role: 'branch', branchCode: 'TC_CC', name: '台中-中清館' },
-  'tc_cf1@space.com': { role: 'branch', branchCode: 'TC_CF1', name: '台中-七期1館' },
-  'tc_cf2@space.com': { role: 'branch', branchCode: 'TC_CF2', name: '台中-七期2館' },
-  'tp_zx@space.com': { role: 'branch', branchCode: 'TP_ZX', name: '台北-忠孝館' },
-  'tp_xz1@space.com': { role: 'branch', branchCode: 'TP_XZ1', name: '新北-汐止1館' },
-  'tp_xz2@space.com': { role: 'branch', branchCode: 'TP_XZ2', name: '新北-汐止2館' }
+// ============ 館別帳號對照表 ============
+const BRANCH_ACCOUNTS = {
+  'master': { role: 'master', name: '總管理者' },
+  'TC_CK': { role: 'branch', branchCode: 'TC_CK', name: '台中-中港館' },
+  'TC_YT': { role: 'branch', branchCode: 'TC_YT', name: '台中-英才館' },
+  'TC_CC': { role: 'branch', branchCode: 'TC_CC', name: '台中-中清館' },
+  'TC_CF1': { role: 'branch', branchCode: 'TC_CF1', name: '台中-七期1館' },
+  'TC_CF2': { role: 'branch', branchCode: 'TC_CF2', name: '台中-七期2館' },
+  'TP_ZX': { role: 'branch', branchCode: 'TP_ZX', name: '台北-忠孝館' },
+  'TP_XZ1': { role: 'branch', branchCode: 'TP_XZ1', name: '新北-汐止1館' },
+  'TP_XZ2': { role: 'branch', branchCode: 'TP_XZ2', name: '新北-汐止2館' }
 };
 
-// ============================================
-// 認證初始化與狀態監聽
-// ============================================
-
-// ============ 館別登入資訊 ============
-
+// ============ 館別密碼對照表 ============
 const BRANCH_PASSWORDS = {
   'master': 'Master@2024',
   'TC_CK': 'TC_CK123',
@@ -58,6 +50,8 @@ const BRANCH_PASSWORDS = {
   'TP_XZ1': 'TP_XZ1123',
   'TP_XZ2': 'TP_XZ2123'
 };
+
+// ============ 館別登入選項 ============
 
 function getBranchLoginOptions() {
   return [
@@ -73,12 +67,8 @@ function getBranchLoginOptions() {
   ];
 }
 
-function getBranchByEmail(email) {
-  const lower = email.toLowerCase();
-  const entry = Object.entries(BRANCH_EMAIL_MAP).find(([e]) => e === lower);
-  if (!entry) return null;
-  const [_, info] = entry;
-  return { ...info, email: lower };
+function getBranchAccount(branchCode) {
+  return BRANCH_ACCOUNTS[branchCode] || null;
 }
 
 // ============ 本地認證 Fallback ============
@@ -98,29 +88,25 @@ function _clearLocalAuth() {
   localStorage.removeItem(LOCAL_AUTH_KEY);
 }
 
-function _getBranchByEmail(email) {
-  return BRANCH_EMAIL_MAP[email.toLowerCase()] || null;
-}
+// ============================================
+// 認證初始化
+// ============================================
 
 /**
  * 初始化認證模組，開始監聽登入狀態變化
- * @param {Function} callback - 狀態變更時的回呼函數，接收 {user, profile, loggedIn}
- *   - user: Firebase User 物件 或 null
- *   - profile: Firestore 中的用戶資料 或 null
- *   - loggedIn: boolean 是否已登入
+ * @param {Function} callback - 狀態變更時的回呼函數
  * @returns {boolean} 初始化是否成功啟動
  */
 function initAuth(callback) {
   // Firebase 未配置 → 啟用本地認證 Fallback
   if (!initFirebase()) {
-    console.log('ℹ️ Firebase 未配置，使用本地認證模式（資料儲存在 localStorage）');
+    console.log('ℹ️ Firebase 未配置，使用本地認證模式');
     _useLocalAuth = true;
     _authInitialized = true;
-    // 檢查本地登入狀態
     const localAuth = _loadLocalAuth();
     if (localAuth) {
       _userProfile = localAuth;
-      _currentUser = { email: localAuth.email, uid: 'local_' + localAuth.email };
+      _currentUser = { uid: 'local_' + localAuth.branchCode, isAnonymous: true };
       if (callback) callback({ user: _currentUser, profile: _userProfile, loggedIn: true });
     } else {
       if (callback) callback({ user: null, profile: null, loggedIn: false });
@@ -137,7 +123,6 @@ function initAuth(callback) {
     return false;
   }
 
-  // 啟用離線持久化（由 Firestore 自動管理）
   enableOfflinePersistence();
 
   // 監聽認證狀態變化
@@ -146,29 +131,26 @@ function initAuth(callback) {
       _authInitialized = true;
 
       if (user) {
-        // 用戶已登入
         _currentUser = user;
-        console.log('✅ 用戶已登入:', user.email);
+        console.log('✅ 用戶已登入 (匿名UID:', user.uid, ')');
 
         try {
-          // 從 Firestore 讀取使用者資料（role, branchCode 等）
           const profile = await loadUserProfile(user.uid);
           _userProfile = profile;
 
           if (profile) {
             console.log('👤 用戶資料已載入 | 角色:', profile.role || '未設定', '| 館別:', profile.branchCode || '未設定');
           } else {
-            console.warn('⚠️ 用戶 %s 在 Firestore 中無對應資料', user.email);
+            console.log('ℹ️ 匿名用戶尚未綁定館別資料');
           }
 
-          if (callback) callback({ user, profile, loggedIn: true });
+          if (callback) callback({ user, profile, loggedIn: !!profile });
         } catch (err) {
           console.error('❌ 載入用戶資料失敗:', err.message);
           _userProfile = null;
-          if (callback) callback({ user, profile: null, loggedIn: true });
+          if (callback) callback({ user, profile: null, loggedIn: false });
         }
       } else {
-        // 用戶未登入
         _currentUser = null;
         _userProfile = null;
         console.log('ℹ️ 用戶未登入');
@@ -176,7 +158,6 @@ function initAuth(callback) {
       }
     },
     (err) => {
-      // 認證狀態監聽錯誤
       console.error('❌ 認證狀態監聽發生錯誤:', err.message);
       _authInitialized = true;
       if (callback) callback({ user: null, profile: null, loggedIn: false });
@@ -187,7 +168,7 @@ function initAuth(callback) {
 }
 
 /**
- * 停止認證狀態監聽（登出頁面時呼叫）
+ * 停止認證狀態監聽
  */
 function stopAuthListener() {
   if (_unsubscribeAuth) {
@@ -201,11 +182,6 @@ function stopAuthListener() {
 // 用戶資料管理
 // ============================================
 
-/**
- * 從 Firestore 載入使用者資料
- * @param {string} uid - Firebase Authentication 的用戶 UID
- * @returns {Object|null} 用戶資料物件（含 role, branchCode）或 null
- */
 async function loadUserProfile(uid) {
   try {
     const db = getDb();
@@ -224,10 +200,6 @@ async function loadUserProfile(uid) {
   }
 }
 
-/**
- * 重新載入當前用戶資料（資料變更後使用）
- * @returns {Object|null} 更新後的用戶資料
- */
 async function refreshUserProfile() {
   if (!_currentUser) {
     console.warn('⚠️ 無法重新載入：用戶未登入');
@@ -243,44 +215,45 @@ async function refreshUserProfile() {
 }
 
 // ============================================
-// 登入 / 登出
+// 登入 / 登出（核心：匿名登入 + 館別密碼驗證）
 // ============================================
 
 /**
- * 使用 Email/Password 登入
- * @param {string} email - 登入帳號的 Email
+ * 使用館別代碼 + 密碼登入
+ * 流程：匿名登入 → 驗證密碼 → 寫入 users 集合
+ * @param {string} branchCode - 館別代碼（如 'TC_CK' 或 'master'）
  * @param {string} password - 登入密碼
  * @returns {Promise<{success: boolean, user?: Object, error?: string}>}
  */
-async function loginUser(email, password) {
-  const emailLower = email.toLowerCase().trim();
-  const branchInfo = _getBranchByEmail(emailLower);
+async function loginUser(branchCode, password) {
+  branchCode = branchCode.trim();
+
+  // ===== 基本驗證 =====
+  const accountInfo = getBranchAccount(branchCode);
+  if (!accountInfo) {
+    return { success: false, error: '找不到此館別代碼' };
+  }
+
+  const expectedPw = BRANCH_PASSWORDS[branchCode];
+  if (!expectedPw || password !== expectedPw) {
+    return { success: false, error: '密碼錯誤' };
+  }
 
   // ===== 本地認證模式（Firebase 未配置） =====
   if (_useLocalAuth) {
-    if (!branchInfo) {
-      return { success: false, error: '找不到此帳號' };
-    }
-    // 本地模式密碼驗證：使用 BRANCH_PASSWORDS 對照表
-    const accountCode = branchInfo.role === 'master' ? 'master' : branchInfo.branchCode;
-    const expectedPw = BRANCH_PASSWORDS[accountCode];
-    if (password !== expectedPw) {
-      return { success: false, error: '密碼錯誤' };
-    }
-    // 本地登入成功
     _userProfile = {
-      email: emailLower,
-      role: branchInfo.role,
-      branchCode: branchInfo.branchCode || null,
-      name: branchInfo.name
+      role: accountInfo.role,
+      branchCode: accountInfo.branchCode || null,
+      name: accountInfo.name,
+      account: branchCode
     };
-    _currentUser = { email: emailLower, uid: 'local_' + emailLower };
+    _currentUser = { uid: 'local_' + branchCode, isAnonymous: true };
     _saveLocalAuth(_userProfile);
-    console.log('✅ 本地登入成功:', emailLower);
+    console.log('✅ 本地登入成功:', branchCode);
     return { success: true, user: _currentUser };
   }
 
-  // ===== Firebase 認證模式 =====
+  // ===== Firebase 匿名登入模式 =====
   if (!initFirebase()) {
     return { success: false, error: 'Firebase 未初始化，無法登入' };
   }
@@ -291,51 +264,65 @@ async function loginUser(email, password) {
   }
 
   try {
-    const result = await auth.signInWithEmailAndPassword(email, password);
-    console.log('✅ 登入成功:', result.user.email);
-    return { success: true, user: result.user };
+    // Step 1: 匿名登入 Firebase
+    let user;
+    if (auth.currentUser && auth.currentUser.isAnonymous) {
+      // 已經是匿名登入狀態，直接使用
+      user = auth.currentUser;
+    } else {
+      // 先登出再匿名登入（避免衝突）
+      try { await auth.signOut(); } catch (e) { /* ignore */ }
+      const result = await auth.signInAnonymously();
+      user = result.user;
+    }
+
+    console.log('✅ 匿名登入成功, UID:', user.uid);
+
+    // Step 2: 寫入 users 集合（綁定館別權限）
+    const db = getDb();
+    const userData = {
+      role: accountInfo.role,
+      name: accountInfo.name,
+      account: branchCode,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (accountInfo.branchCode) {
+      userData.branchCode = accountInfo.branchCode;
+    }
+
+    // 使用 set with merge 避免覆蓋既有資料
+    await db.collection('users').doc(user.uid).set(userData, { merge: true });
+    console.log('✅ 用戶資料已寫入 Firestore');
+
+    // Step 3: 更新本地狀態
+    _currentUser = user;
+    _userProfile = { ...userData, branchCode: accountInfo.branchCode || null };
+
+    console.log('✅ 登入成功:', branchCode, '|', accountInfo.name);
+    return { success: true, user: user };
+
   } catch (err) {
     let message = '登入失敗';
+    console.error('❌ 登入失敗:', err.code, err.message);
     switch (err.code) {
-      case 'auth/invalid-email':
-        message = 'Email 格式不正確，請檢查輸入';
-        break;
-      case 'auth/user-not-found':
-      case 'auth/invalid-credential':
-        message = '找不到此帳號或密碼錯誤，請確認後重試';
-        break;
-      case 'auth/wrong-password':
-        message = '密碼錯誤，請重新輸入';
-        break;
-      case 'auth/too-many-requests':
-        message = '嘗試次數過多，請稍後再試（約 30 秒）';
-        break;
+      case 'auth/operation-not-allowed':
+        message = '匿名登入未啟用，請聯繫管理員'; break;
       case 'auth/network-request-failed':
-        message = '網路連線失敗，請檢查網路狀態';
-        break;
-      case 'auth/user-disabled':
-        message = '此帳號已被停用，請聯繫管理員';
-        break;
-      case 'auth/invalid-login-credentials':
-        message = '帳號或密碼錯誤，請確認後重試';
-        break;
+        message = '網路連線失敗，請檢查網路狀態'; break;
+      default:
+        message = '登入失敗：' + (err.message || '未知錯誤');
     }
-    console.error('❌ 登入失敗 (%s): %s', err.code, message);
     return { success: false, error: message };
   }
 }
 
 /**
  * 登出當前用戶
- * @returns {Promise<{success: boolean, error?: string}>}
  */
 async function logoutUser() {
-  // 清除本地認證狀態
   _clearLocalAuth();
-  _currentUser = null;
   _userProfile = null;
 
-  // 如果 Firebase 可用，也執行 Firebase 登出
   if (initFirebase()) {
     const auth = getAuth();
     if (auth) {
@@ -343,6 +330,7 @@ async function logoutUser() {
     }
   }
 
+  _currentUser = null;
   console.log('✅ 登出成功');
   return { success: true };
 }
@@ -351,52 +339,25 @@ async function logoutUser() {
 // 用戶資訊查詢
 // ============================================
 
-/**
- * 取得當前登入的 Firebase User 物件
- * @returns {firebase.User|null}
- */
 function getCurrentUser() {
   return _currentUser;
 }
 
-/**
- * 取得當前用戶的 Firestore 資料（含 role, branchCode）
- * @returns {Object|null}
- */
 function getUserProfile() {
   return _userProfile;
 }
 
-/**
- * 取得當前登入用戶的 UID
- * @returns {string|null}
- */
 function getCurrentUserId() {
   return _currentUser ? _currentUser.uid : null;
 }
 
-/**
- * 取得當前登入用戶的 Email
- * @returns {string|null}
- */
 function getCurrentUserEmail() {
-  return _currentUser ? _currentUser.email : null;
+  return null; // 匿名登入沒有 email
 }
 
-/**
- * 取得當前用戶的顯示名稱
- * @returns {string|null}
- */
 function getCurrentUserName() {
-  if (_userProfile && _userProfile.displayName) {
-    return _userProfile.displayName;
-  }
-  if (_currentUser && _currentUser.displayName) {
-    return _currentUser.displayName;
-  }
-  // 從 email 推斷
-  if (_currentUser && _currentUser.email) {
-    return _currentUser.email.split('@')[0];
+  if (_userProfile && _userProfile.name) {
+    return _userProfile.name;
   }
   return null;
 }
@@ -405,39 +366,23 @@ function getCurrentUserName() {
 // 登入狀態檢查
 // ============================================
 
-/**
- * 檢查用戶是否已登入且認證初始化已完成
- * @returns {boolean}
- */
 function isUserLoggedIn() {
-  return !!_currentUser && _authInitialized;
+  return !!_currentUser && _authInitialized && !!_userProfile;
 }
 
-/**
- * 檢查認證是否已初始化（無論登入與否）
- * @returns {boolean}
- */
 function isAuthInitialized() {
   return _authInitialized;
 }
 
-/**
- * 等待認證初始化完成
- * @param {number} timeoutMs - 最大等待時間（毫秒），預設 10000
- * @returns {Promise<boolean>} 是否已登入
- */
 function waitForAuth(timeoutMs) {
   const maxWait = timeoutMs || 10000;
   return new Promise((resolve) => {
-    // 已初始化，直接回傳
     if (_authInitialized) {
       resolve(isUserLoggedIn());
       return;
     }
-
-    // 定時檢查
     let waited = 0;
-    const interval = 100; // 每 100ms 檢查一次
+    const interval = 100;
     const check = setInterval(() => {
       waited += interval;
       if (_authInitialized) {
@@ -458,44 +403,21 @@ function waitForAuth(timeoutMs) {
 // 權限檢查
 // ============================================
 
-/**
- * 檢查當前用戶是否為管理員（master）
- * 管理員擁有所有館別的讀寫權限
- * @returns {boolean}
- */
 function isMaster() {
   return _userProfile && _userProfile.role === 'master';
 }
 
-/**
- * 檢查是否有指定館別的權限
- * - 管理員：所有館別皆可存取
- * - 館別人員：只能存取自己的館別
- * @param {string} branchCode - 館別代碼（如 'tc_ck', 'tp_zx'）
- * @returns {boolean}
- */
 function hasBranchAccess(branchCode) {
   if (!branchCode) return false;
-  // 管理員擁有所有館別權限
   if (isMaster()) return true;
-  // 館別人員只能存取自己的館別
   return _userProfile && _userProfile.branchCode === branchCode;
 }
 
-/**
- * 取得當前用戶的館別代碼
- * @returns {string|null} 館別代碼，未設定或管理員則回傳 null
- */
 function getUserBranchCode() {
-  if (isMaster()) return null; // 管理員無特定館別
+  if (isMaster()) return null;
   return _userProfile ? _userProfile.branchCode : null;
 }
 
-/**
- * 取得當前用戶有權限的館別列表
- * @param {Array<{code: string, name: string}>} allBranches - 所有館別列表
- * @returns {Array<{code: string, name: string}>} 用戶可存取的館別列表
- */
 function getAccessibleBranches(allBranches) {
   if (isMaster()) {
     return allBranches || [];
@@ -506,165 +428,58 @@ function getAccessibleBranches(allBranches) {
 }
 
 // ============================================
-// 密碼管理
-// ============================================
-
-/**
- * 修改當前用戶的密碼
- * @param {string} newPassword - 新密碼（至少 6 個字元）
- * @returns {Promise<{success: boolean, error?: string}>}
- */
-async function changePassword(newPassword) {
-  if (!initFirebase() || !_currentUser) {
-    return { success: false, error: '用戶未登入' };
-  }
-
-  try {
-    await _currentUser.updatePassword(newPassword);
-    console.log('✅ 密碼修改成功');
-    return { success: true };
-  } catch (err) {
-    let message = '密碼修改失敗';
-    switch (err.code) {
-      case 'auth/weak-password':
-        message = '新密碼強度不足，至少需要 6 個字元';
-        break;
-      case 'auth/requires-recent-login':
-        message = '為了安全起見，請先重新登入後再修改密碼';
-        break;
-    }
-    console.error('❌ 修改密碼失敗:', err.code, message);
-    return { success: false, error: message };
-  }
-}
-
-/**
- * 發送密碼重設 Email
- * @param {string} email - 要重設密碼的 Email
- * @returns {Promise<{success: boolean, error?: string}>}
- */
-async function sendPasswordReset(email) {
-  if (!initFirebase()) {
-    return { success: false, error: 'Firebase 未初始化' };
-  }
-
-  const auth = getAuth();
-  try {
-    await auth.sendPasswordResetEmail(email);
-    console.log('✅ 密碼重設信已發送至:', email);
-    return { success: true };
-  } catch (err) {
-    let message = '發送密碼重設信失敗';
-    switch (err.code) {
-      case 'auth/invalid-email':
-        message = 'Email 格式不正確';
-        break;
-      case 'auth/user-not-found':
-        message = '找不到此帳號';
-        break;
-    }
-    return { success: false, error: message };
-  }
-}
-
-// ============================================
 // 帳號管理（僅管理員可用）
 // ============================================
 
 /**
- * 建立新帳號（管理員功能）
- * 在 Firebase Authentication 中建立帳號，並在 Firestore users 集合寫入資料
- * @param {string} email - 新帳號 Email
- * @param {string} password - 初始密碼
- * @param {Object} profile - 用戶資料 { displayName, role, branchCode }
- * @returns {Promise<{success: boolean, uid?: string, error?: string}>}
+ * 修改館別密碼
+ * @param {string} branchCode - 館別代碼
+ * @param {string} newPassword - 新密碼
+ * @returns {Promise<{success: boolean, error?: string}>}
  */
-async function createUserAccount(email, password, profile) {
+async function changeBranchPassword(branchCode, newPassword) {
   if (!isMaster()) {
-    return { success: false, error: '只有管理員可以建立新帳號' };
+    return { success: false, error: '只有管理員可以修改密碼' };
+  }
+  if (!newPassword || newPassword.length < 4) {
+    return { success: false, error: '密碼至少需要 4 個字元' };
   }
 
-  if (!initFirebase()) {
-    return { success: false, error: 'Firebase 未初始化' };
-  }
+  // 更新記憶體中的密碼
+  BRANCH_PASSWORDS[branchCode] = newPassword;
 
-  const auth = getAuth();
-  const db = getDb();
-
-  try {
-    // 使用 Firebase Admin SDK 或 Cloud Function 建立較安全
-    // 此處使用 Secondary App 來建立不登出當前用戶
-    const secondaryApp = firebase.initializeApp(FIREBASE_CONFIG, 'Secondary');
-    const secondaryAuth = secondaryApp.auth();
-
-    const result = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-    const uid = result.user.uid;
-
-    // 在 Firestore 建立用戶資料
-    await db.collection('users').doc(uid).set({
-      email: email,
-      displayName: profile.displayName || '',
-      role: profile.role || 'staff',
-      branchCode: profile.branchCode || '',
-      createdAt: serverTimestamp(),
-      createdBy: getCurrentUserId()
-    });
-
-    // 清理 secondary app
-    await secondaryAuth.signOut();
-    await secondaryApp.delete();
-
-    console.log('✅ 帳號建立成功:', email, '| UID:', uid);
-    return { success: true, uid: uid };
-  } catch (err) {
-    let message = '帳號建立失敗';
-    switch (err.code) {
-      case 'auth/email-already-in-use':
-        message = '此 Email 已被使用';
-        break;
-      case 'auth/invalid-email':
-        message = 'Email 格式不正確';
-        break;
-      case 'auth/weak-password':
-        message = '密碼強度不足，至少需要 6 個字元';
-        break;
+  // 同步到 Firestore accounts 集合
+  if (initFirebase()) {
+    try {
+      const db = getDb();
+      await db.collection('accounts').doc(branchCode).set({
+        password: newPassword,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedBy: getCurrentUserId()
+      }, { merge: true });
+    } catch (err) {
+      console.error('❌ 同步密碼到 Firestore 失敗:', err);
     }
-    console.error('❌ 建立帳號失敗:', err.code, message);
-    return { success: false, error: message };
   }
+
+  console.log('✅ 密碼修改成功:', branchCode);
+  return { success: true };
 }
 
 // ============================================
 // 工具函數
 // ============================================
 
-/**
- * 從 Email 推斷館別代碼
- * Email 格式：tc_ck@space.com → 館別：tc_ck
- * @param {string} email
- * @returns {string|null}
- */
-function extractBranchFromEmail(email) {
-  if (!email) return null;
-  const localPart = email.split('@')[0];
-  // 管理員帳號
-  if (localPart === 'master') return null;
-  return localPart;
-}
-
-/**
- * 取得當前用戶的完整資訊摘要
- * @returns {Object} 用戶資訊摘要
- */
 function getUserSummary() {
   return {
     loggedIn: isUserLoggedIn(),
     initialized: _authInitialized,
     uid: getCurrentUserId(),
-    email: getCurrentUserEmail(),
+    email: null, // 匿名登入沒有 email
     name: getCurrentUserName(),
     role: _userProfile ? _userProfile.role : null,
     branchCode: getUserBranchCode(),
-    isMaster: isMaster()
+    isMaster: isMaster(),
+    isAnonymous: true
   };
 }
