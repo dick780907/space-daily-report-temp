@@ -48,7 +48,7 @@ const BRANCH_EMAIL_MAP = {
 // ============ 館別登入資訊 ============
 
 const BRANCH_PASSWORDS = {
-  'master': 'admin123',
+  'master': 'Master@2024',
   'TC_CK': 'TC_CK123',
   'TC_YT': 'TC_YT123',
   'TC_CC': 'TC_CC123',
@@ -61,15 +61,15 @@ const BRANCH_PASSWORDS = {
 
 function getBranchLoginOptions() {
   return [
-    { email: 'master@space.com', name: '👑 總管理者', code: 'master' },
-    { email: 'tc_ck@space.com', name: '🏢 台中-中港館', code: 'TC_CK' },
-    { email: 'tc_yt@space.com', name: '🏢 台中-英才館', code: 'TC_YT' },
-    { email: 'tc_cc@space.com', name: '🏢 台中-中清館', code: 'TC_CC' },
-    { email: 'tc_cf1@space.com', name: '🏢 台中-七期1館', code: 'TC_CF1' },
-    { email: 'tc_cf2@space.com', name: '🏢 台中-七期2館', code: 'TC_CF2' },
-    { email: 'tp_zx@space.com', name: '🏢 台北-忠孝館', code: 'TP_ZX' },
-    { email: 'tp_xz1@space.com', name: '🏢 新北-汐止1館', code: 'TP_XZ1' },
-    { email: 'tp_xz2@space.com', name: '🏢 新北-汐止2館', code: 'TP_XZ2' }
+    { code: 'master', name: '👑 總管理者' },
+    { code: 'TC_CK', name: '🏢 台中-中港館' },
+    { code: 'TC_YT', name: '🏢 台中-英才館' },
+    { code: 'TC_CC', name: '🏢 台中-中清館' },
+    { code: 'TC_CF1', name: '🏢 台中-七期1館' },
+    { code: 'TC_CF2', name: '🏢 台中-七期2館' },
+    { code: 'TP_ZX', name: '🏢 台北-忠孝館' },
+    { code: 'TP_XZ1', name: '🏢 新北-汐止1館' },
+    { code: 'TP_XZ2', name: '🏢 新北-汐止2館' }
   ];
 }
 
@@ -261,9 +261,9 @@ async function loginUser(email, password) {
     if (!branchInfo) {
       return { success: false, error: '找不到此帳號' };
     }
-    // 本地模式密碼驗證：館別代碼大寫 + "123" 或 "admin123"
-    const expectedPw = branchInfo.role === 'master' ? 'admin123'
-      : branchInfo.branchCode.toUpperCase() + '123';
+    // 本地模式密碼驗證：使用 BRANCH_PASSWORDS 對照表
+    const accountCode = branchInfo.role === 'master' ? 'master' : branchInfo.branchCode;
+    const expectedPw = BRANCH_PASSWORDS[accountCode];
     if (password !== expectedPw) {
       return { success: false, error: '密碼錯誤' };
     }
