@@ -1,6 +1,6 @@
 /**
  * 登入頁面渲染函數 - 史貝斯商務中心日報系統
- * 提供 帳號 + 密碼 登入，以及快速館別選擇
+ * 數字鍵盤選擇館別 + 密碼登入
  */
 
 function renderLogin() {
@@ -12,286 +12,317 @@ function renderLogin() {
     return;
   }
 
-  // 取得上次記住的帳號
-  const lastAccount = localStorage.getItem('space_last_account') || '';
+  // 館別數字對照表
+  const BRANCH_NUMBERS = [
+    { num: '1', code: 'TC_CK', name: '台中-中港館', color: 'from-purple-500 to-purple-600' },
+    { num: '2', code: 'TC_YT', name: '台中-英才館', color: 'from-purple-500 to-purple-600' },
+    { num: '3', code: 'TC_CC', name: '台中-中清館', color: 'from-purple-500 to-purple-600' },
+    { num: '4', code: 'TC_CF1', name: '台中-七期1館', color: 'from-indigo-500 to-indigo-600' },
+    { num: '5', code: 'TC_CF2', name: '台中-七期2館', color: 'from-indigo-500 to-indigo-600' },
+    { num: '6', code: 'TP_ZX', name: '台北-忠孝館', color: 'from-blue-500 to-blue-600' },
+    { num: '7', code: 'TP_XZ1', name: '新北-汐止1館', color: 'from-cyan-500 to-cyan-600' },
+    { num: '8', code: 'TP_XZ2', name: '新北-汐止2館', color: 'from-cyan-500 to-cyan-600' }
+  ];
 
-  // 館別選項（用於下拉選單）
-  const branchOptions = getBranchLoginOptions();
-  const branchSelectOptions = branchOptions.map(opt =>
-    `<option value="${escapeHtml(opt.code)}">${escapeHtml(opt.name)}</option>`
-  ).join('');
+  // 步驟狀態：'select' = 選館別, 'password' = 輸入密碼
+  let currentStep = 'select';
+  let selectedBranch = null;
+  let passwordValue = '';
 
-  // 組合登入頁面 HTML
-  app.innerHTML = `
-    <div class="min-h-screen flex flex-col bg-gray-50">
-      <!-- 頂部標題區 -->
-      ${PageHeader('🏢 史貝斯商務中心日報系統', '請登入以繼續使用系統')}
+  function renderSelectView() {
+    currentStep = 'select';
+    selectedBranch = null;
+    passwordValue = '';
 
-      <!-- 登入卡片 -->
-      <main class="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
-        <div class="w-full max-w-md">
-          <div class="bg-white rounded-2xl shadow-lg shadow-purple-100/50 border border-purple-100 p-6 sm:p-8">
-            <!-- 鎖頭圖標 -->
-            <div class="text-center mb-6">
-              <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center mb-3">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                </svg>
-              </div>
-              <h2 class="text-xl font-bold text-gray-800">帳號登入</h2>
-              <p class="text-sm text-gray-500 mt-1">請輸入您的帳號與密碼</p>
-            </div>
+    const branchGrid = BRANCH_NUMBERS.map(b => `
+      <button
+        type="button"
+        data-branch-num="${b.num}"
+        class="branch-num-btn group relative bg-white rounded-2xl shadow-md border-2 border-gray-100 p-4 sm:p-5
+               hover:shadow-lg hover:border-purple-300 hover:scale-[1.03]
+               active:scale-[0.97] transition-all duration-150
+               flex flex-col items-center justify-center gap-1 sm:gap-2 min-h-[90px] sm:min-h-[100px]"
+      >
+        <span class="text-2xl sm:text-3xl font-bold bg-gradient-to-br ${b.color} bg-clip-text text-transparent">
+          ${b.num}
+        </span>
+        <span class="text-xs sm:text-sm font-medium text-gray-600 group-hover:text-purple-700 transition-colors text-center leading-tight">
+          ${escapeHtml(b.name)}
+        </span>
+      </button>
+    `).join('');
 
-            <!-- 登入表單 -->
-            <form id="login-form" class="space-y-4" data-nosubmit="false">
-              <!-- 快速選擇館別 -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">快速選擇館別</label>
-                <select id="branch-select"
-                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all cursor-pointer">
-                  <option value="">-- 請選擇館別 --</option>
-                  ${branchSelectOptions}
-                </select>
-              </div>
-
-              <!-- 帳號輸入 -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">帳號</label>
-                <input
-                  type="text"
-                  id="login-account"
-                  value="${escapeHtml(lastAccount)}"
-                  placeholder="請輸入帳號（如 tc_ck）"
-                  autocomplete="username"
-                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  required
-                />
-              </div>
-
-              <!-- 密碼輸入 -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">密碼</label>
-                <div class="relative">
-                  <input
-                    type="password"
-                    id="login-password"
-                    placeholder="請輸入密碼"
-                    autocomplete="current-password"
-                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-12 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    required
-                  />
-                  <button
-                    type="button"
-                    id="toggle-password"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
-                    aria-label="切換密碼顯示"
-                  >
-                    <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 記住我 -->
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="remember-account"
-                  ${lastAccount ? 'checked' : ''}
-                  class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
-                />
-                <label for="remember-account" class="ml-2 text-sm text-gray-600 cursor-pointer select-none">記住我的帳號</label>
-              </div>
-
-              <!-- 登入按鈕 -->
-              <button
-                type="submit"
-                id="login-btn"
-                class="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white px-6 py-3 rounded-xl font-medium shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                </svg>
-                <span id="login-btn-text">登入</span>
-              </button>
-
-              <!-- 錯誤訊息區域 -->
-              <div id="login-error" class="hidden rounded-xl bg-red-50 border border-red-200 px-4 py-3">
-                <div class="flex items-center gap-2">
-                  <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                  <p id="login-error-text" class="text-sm text-red-600"></p>
-                </div>
-              </div>
-
-              <!-- 提示訊息 -->
-              <div class="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
-                <div class="flex items-start gap-2">
-                  <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                  <div class="text-xs text-blue-600 space-y-1">
-                    <p class="font-medium">預設密碼提示：</p>
-                    <p>各館密碼為「館別代碼 + 123」（如 TC_CK123）</p>
-                    <p>管理者密碼為 Master@2024</p>
-                  </div>
-                </div>
-              </div>
-            </form>
-          </div>
-
-          <!-- 返回首頁 -->
-          <div class="text-center mt-4">
-            <a href="#" class="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-purple-600 transition-colors no-underline">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-              </svg>
-              返回館別選擇
-            </a>
+    app.innerHTML = `
+      <div class="min-h-screen flex flex-col bg-gray-50">
+        <!-- 頂部標題 -->
+        <div class="bg-white border-b border-gray-200 px-4 py-4 sm:py-5">
+          <div class="max-w-lg mx-auto text-center">
+            <h1 class="text-lg sm:text-xl font-bold text-gray-800">🏢 史貝斯商務中心</h1>
+            <p class="text-sm text-gray-500 mt-0.5">請選擇您的館別</p>
           </div>
         </div>
-      </main>
 
-      <!-- 底部版權 -->
-      <footer class="py-6 text-center">
-        <p class="text-xs text-gray-400">&copy; 史貝斯商務中心日報系統 &middot; All Rights Reserved</p>
-      </footer>
-    </div>
-  `;
+        <!-- 館別選擇網格 -->
+        <main class="flex-1 flex flex-col items-center justify-center px-4 py-6">
+          <div class="w-full max-w-sm">
+            <!-- 8個館別 -->
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
+              ${branchGrid}
+            </div>
 
-  // ============ 綁定事件 ============
+            <!-- 管理者入口 -->
+            <button
+              type="button"
+              data-branch-num="0"
+              class="branch-num-btn w-full bg-gradient-to-r from-amber-400 to-amber-500 text-white rounded-2xl shadow-md
+                     px-4 py-3 sm:py-4 font-bold text-base sm:text-lg
+                     hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-150
+                     flex items-center justify-center gap-2"
+            >
+              <span>👑</span>
+              <span>0 - 總管理者</span>
+            </button>
 
-  const loginForm = document.getElementById('login-form');
-  const accountInput = document.getElementById('login-account');
-  const passwordInput = document.getElementById('login-password');
-  const branchSelect = document.getElementById('branch-select');
-  const loginBtn = document.getElementById('login-btn');
-  const loginBtnText = document.getElementById('login-btn-text');
-  const errorBox = document.getElementById('login-error');
-  const errorText = document.getElementById('login-error-text');
-  const rememberCheckbox = document.getElementById('remember-account');
-  const togglePasswordBtn = document.getElementById('toggle-password');
+            <!-- 錯誤訊息 -->
+            <div id="login-error" class="hidden mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01"/>
+                </svg>
+                <p id="login-error-text" class="text-sm text-red-600"></p>
+              </div>
+            </div>
+          </div>
+        </main>
 
-  // --- 館別下拉選單變更：自動填入帳號 ---
-  branchSelect.addEventListener('change', () => {
-    const selectedCode = branchSelect.value;
-    if (selectedCode) {
-      accountInput.value = selectedCode;
-      // 自動填入對應密碼提示
-      const defaultPassword = BRANCH_PASSWORDS[selectedCode];
-      if (defaultPassword) {
-        passwordInput.placeholder = `預設密碼: ${defaultPassword}`;
+        <!-- 底部 -->
+        <footer class="py-4 text-center">
+          <p class="text-xs text-gray-400">&copy; 史貝斯商務中心日報系統</p>
+        </footer>
+      </div>
+    `;
+
+    // 綁定館別按鈕事件
+    document.querySelectorAll('.branch-num-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const num = btn.getAttribute('data-branch-num');
+        if (num === '0') {
+          selectedBranch = { num: '0', code: 'master', name: '總管理者', email: 'master@space.com' };
+        } else {
+          const b = BRANCH_NUMBERS.find(x => x.num === num);
+          selectedBranch = { ...b, email: `${b.code.toLowerCase()}@space.com` };
+        }
+        renderPasswordView();
+      });
+    });
+  }
+
+  function renderPasswordView() {
+    currentStep = 'password';
+    passwordValue = '';
+
+    const branchLabel = selectedBranch.num === '0'
+      ? '👑 總管理者'
+      : `${selectedBranch.num} - ${selectedBranch.name}`;
+
+    const branchColor = selectedBranch.num === '0'
+      ? 'from-amber-400 to-amber-500'
+      : selectedBranch.color;
+
+    // 數字鍵盤 1-9 + 0
+    const numKeys = [
+      '1','2','3',
+      '4','5','6',
+      '7','8','9',
+      'C','0','←'
+    ];
+
+    const keypadGrid = numKeys.map(key => {
+      let keyClass = 'bg-white text-gray-800 border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50';
+      let keyLabel = key;
+      if (key === 'C') {
+        keyClass = 'bg-red-50 text-red-600 border-2 border-red-200 hover:border-red-400 hover:bg-red-100';
+      } else if (key === '←') {
+        keyClass = 'bg-gray-100 text-gray-700 border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-200';
+        keyLabel = '⌫';
       }
-      passwordInput.focus();
+      return `
+        <button
+          type="button"
+          data-key="${key}"
+          class="num-key-btn ${keyClass} rounded-2xl text-xl sm:text-2xl font-bold
+                 h-16 sm:h-18 flex items-center justify-center
+                 active:scale-[0.92] transition-all duration-100 shadow-sm"
+        >${keyLabel}</button>
+      `;
+    }).join('');
+
+    app.innerHTML = `
+      <div class="min-h-screen flex flex-col bg-gray-50">
+        <!-- 頂部：顯示選擇的館別 -->
+        <div class="bg-white border-b border-gray-200 px-4 py-4">
+          <div class="max-w-sm mx-auto">
+            <button id="back-to-select" class="text-sm text-gray-500 hover:text-purple-600 flex items-center gap-1 mb-2 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+              返回選擇館別
+            </button>
+            <div class="bg-gradient-to-r ${branchColor} text-white rounded-xl px-4 py-3 text-center shadow-md">
+              <p class="text-sm opacity-90">已選擇館別</p>
+              <p class="text-lg font-bold">${escapeHtml(branchLabel)}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 密碼輸入區 -->
+        <main class="flex-1 flex flex-col items-center justify-center px-4 py-4">
+          <div class="w-full max-w-xs">
+            <!-- 密碼顯示圓點 -->
+            <div class="text-center mb-4">
+              <p class="text-sm text-gray-500 mb-2">請輸入密碼</p>
+              <div id="password-dots" class="flex items-center justify-center gap-3 h-10">
+                <span class="text-gray-300 text-2xl tracking-widest">••••••</span>
+              </div>
+            </div>
+
+            <!-- 數字鍵盤 -->
+            <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+              ${keypadGrid}
+            </div>
+
+            <!-- 登入按鈕 -->
+            <button
+              type="button"
+              id="login-submit-btn"
+              class="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-2xl
+                     py-3.5 text-lg font-bold shadow-lg shadow-purple-200
+                     hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]
+                     transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              登入
+            </button>
+
+            <!-- 錯誤訊息 -->
+            <div id="login-error" class="hidden mt-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01"/>
+                </svg>
+                <p id="login-error-text" class="text-sm text-red-600"></p>
+              </div>
+            </div>
+
+            <!-- 密碼提示 -->
+            <div class="mt-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
+              <div class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01"/>
+                </svg>
+                <div class="text-xs text-blue-600">
+                  <p class="font-medium">預設密碼：</p>
+                  <p id="password-hint">${selectedBranch.num === '0' ? 'Master@2024' : selectedBranch.code + '123'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    `;
+
+    updatePasswordDots();
+
+    // 綁定數字鍵盤事件
+    document.querySelectorAll('.num-key-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.getAttribute('data-key');
+        handleKeyPress(key);
+      });
+    });
+
+    // 登入按鈕
+    document.getElementById('login-submit-btn').addEventListener('click', doLogin);
+
+    // 返回按鈕
+    document.getElementById('back-to-select').addEventListener('click', renderSelectView);
+  }
+
+  function handleKeyPress(key) {
+    const errorBox = document.getElementById('login-error');
+    if (errorBox) errorBox.classList.add('hidden');
+
+    if (key === 'C') {
+      passwordValue = '';
+    } else if (key === '←') {
+      passwordValue = passwordValue.slice(0, -1);
+    } else if (/^[0-9]$/.test(key)) {
+      passwordValue += key;
     }
-  });
+    updatePasswordDots();
+  }
 
-  // --- 切換密碼顯示 ---
-  let passwordVisible = false;
-  togglePasswordBtn.addEventListener('click', () => {
-    passwordVisible = !passwordVisible;
-    passwordInput.type = passwordVisible ? 'text' : 'password';
-    togglePasswordBtn.innerHTML = passwordVisible
-      ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-             d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-         </svg>`
-      : `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-             d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-             d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-         </svg>`;
-  });
+  function updatePasswordDots() {
+    const dotsContainer = document.getElementById('password-dots');
+    if (!dotsContainer) return;
 
-  // --- 表單提交：登入 ---
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const account = accountInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    // 清除錯誤訊息
-    errorBox.classList.add('hidden');
-    errorText.textContent = '';
-
-    // 基本驗證
-    if (!account) {
-      showError('請輸入帳號');
-      accountInput.focus();
-      return;
+    if (passwordValue.length === 0) {
+      dotsContainer.innerHTML = '<span class="text-gray-300 text-2xl tracking-widest">••••••</span>';
+    } else {
+      const filled = '•'.repeat(passwordValue.length);
+      const empty = '○'.repeat(Math.max(0, 6 - passwordValue.length));
+      dotsContainer.innerHTML = `<span class="text-2xl tracking-widest"><span class="text-purple-600 font-bold">${filled}</span><span class="text-gray-300">${empty}</span></span>`;
     }
-    if (!password) {
+  }
+
+  async function doLogin() {
+    if (!passwordValue) {
       showError('請輸入密碼');
-      passwordInput.focus();
       return;
     }
 
-    // 帳號轉換為 email（自動加上 @space.com）
-    const email = account.includes('@') ? account : `${account}@space.com`;
+    const account = selectedBranch.code;
+    const password = passwordValue;
 
-    // 設置載入狀態
-    setLoading(true);
+    // 帳號轉換為 email
+    const email = `${account.toLowerCase()}@space.com`;
+
+    const loginBtn = document.getElementById('login-submit-btn');
+    loginBtn.disabled = true;
+    loginBtn.textContent = '登入中...';
 
     try {
       const result = await loginUser(email, password);
 
       if (result.success) {
-        // 記住帳號（記住原始帳號，不含 @space.com）
-        if (rememberCheckbox.checked) {
-          localStorage.setItem('space_last_account', account);
-        } else {
-          localStorage.removeItem('space_last_account');
-        }
-
-        // 從 profile 取得角色資訊
         const profile = getUserProfile();
         showToast(`登入成功！歡迎，${escapeHtml(profile?.name || '')}`, 'success');
 
-        // 依角色導向
         if (profile?.role === 'master') {
           navigateTo('admin');
         } else {
           navigateTo('branch', { code: profile?.branchCode });
         }
       } else {
-        showError(result.error || '登入失敗，請檢查您的帳號密碼');
-        passwordInput.value = '';
-        passwordInput.focus();
+        showError(result.error || '登入失敗，密碼錯誤');
+        passwordValue = '';
+        updatePasswordDots();
       }
     } catch (err) {
       console.error('[Login] 登入過程發生錯誤:', err);
       showError('網路連線異常，請檢查網路後再試');
     } finally {
-      setLoading(false);
+      loginBtn.disabled = false;
+      loginBtn.textContent = '登入';
     }
-  });
-
-  // --- 輔助函數 ---
+  }
 
   function showError(message) {
-    errorText.textContent = message;
-    errorBox.classList.remove('hidden');
+    const errorBox = document.getElementById('login-error');
+    const errorText = document.getElementById('login-error-text');
+    if (errorText) errorText.textContent = message;
+    if (errorBox) errorBox.classList.remove('hidden');
   }
 
-  function setLoading(loading) {
-    if (loading) {
-      loginBtn.disabled = true;
-      loginBtn.classList.add('opacity-70', 'cursor-not-allowed');
-      loginBtnText.textContent = '登入中...';
-    } else {
-      loginBtn.disabled = false;
-      loginBtn.classList.remove('opacity-70', 'cursor-not-allowed');
-      loginBtnText.textContent = '登入';
-    }
-  }
+  // 初始渲染館別選擇畫面
+  renderSelectView();
 }
