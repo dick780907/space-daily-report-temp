@@ -1,6 +1,6 @@
 /**
  * 登入頁面渲染函數 - 史貝斯商務中心日報系統
- * 數字鍵盤選擇館別 + 密碼登入
+ * 數字鍵盤選擇館別 + 密碼登入（匿名認證，完全不需要 Email）
  */
 
 function renderLogin() {
@@ -24,7 +24,7 @@ function renderLogin() {
     { num: '8', code: 'TP_XZ2', name: '新北-汐止2館', color: 'from-cyan-500 to-cyan-600' }
   ];
 
-  // 步驟狀態：'select' = 選館別, 'password' = 輸入密碼
+  // 步驟狀態
   let currentStep = 'select';
   let selectedBranch = null;
   let passwordValue = '';
@@ -65,7 +65,6 @@ function renderLogin() {
         <!-- 館別選擇網格 -->
         <main class="flex-1 flex flex-col items-center justify-center px-4 py-6">
           <div class="w-full max-w-sm">
-            <!-- 8個館別 -->
             <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
               ${branchGrid}
             </div>
@@ -83,7 +82,6 @@ function renderLogin() {
               <span>0 - 總管理者</span>
             </button>
 
-            <!-- 錯誤訊息 -->
             <div id="login-error" class="hidden mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
               <div class="flex items-center gap-2">
                 <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -95,22 +93,20 @@ function renderLogin() {
           </div>
         </main>
 
-        <!-- 底部 -->
         <footer class="py-4 text-center">
           <p class="text-xs text-gray-400">&copy; 史貝斯商務中心日報系統</p>
         </footer>
       </div>
     `;
 
-    // 綁定館別按鈕事件
     document.querySelectorAll('.branch-num-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const num = btn.getAttribute('data-branch-num');
         if (num === '0') {
-          selectedBranch = { num: '0', code: 'master', name: '總管理者', email: 'master@space.com' };
+          selectedBranch = { num: '0', code: 'master', name: '總管理者' };
         } else {
           const b = BRANCH_NUMBERS.find(x => x.num === num);
-          selectedBranch = { ...b, email: `${b.code.toLowerCase()}@space.com` };
+          selectedBranch = { ...b };
         }
         renderPasswordView();
       });
@@ -129,13 +125,7 @@ function renderLogin() {
       ? 'from-amber-400 to-amber-500'
       : selectedBranch.color;
 
-    // 數字鍵盤 1-9 + 0
-    const numKeys = [
-      '1','2','3',
-      '4','5','6',
-      '7','8','9',
-      'C','0','←'
-    ];
+    const numKeys = ['1','2','3','4','5','6','7','8','9','C','0','←'];
 
     const keypadGrid = numKeys.map(key => {
       let keyClass = 'bg-white text-gray-800 border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50';
@@ -159,7 +149,6 @@ function renderLogin() {
 
     app.innerHTML = `
       <div class="min-h-screen flex flex-col bg-gray-50">
-        <!-- 頂部：顯示選擇的館別 -->
         <div class="bg-white border-b border-gray-200 px-4 py-4">
           <div class="max-w-sm mx-auto">
             <button id="back-to-select" class="text-sm text-gray-500 hover:text-purple-600 flex items-center gap-1 mb-2 transition-colors">
@@ -175,10 +164,8 @@ function renderLogin() {
           </div>
         </div>
 
-        <!-- 密碼輸入區 -->
         <main class="flex-1 flex flex-col items-center justify-center px-4 py-4">
           <div class="w-full max-w-xs">
-            <!-- 密碼顯示圓點 -->
             <div class="text-center mb-4">
               <p class="text-sm text-gray-500 mb-2">請輸入密碼</p>
               <div id="password-dots" class="flex items-center justify-center gap-3 h-10">
@@ -186,12 +173,10 @@ function renderLogin() {
               </div>
             </div>
 
-            <!-- 數字鍵盤 -->
             <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
               ${keypadGrid}
             </div>
 
-            <!-- 登入按鈕 -->
             <button
               type="button"
               id="login-submit-btn"
@@ -203,7 +188,6 @@ function renderLogin() {
               登入
             </button>
 
-            <!-- 錯誤訊息 -->
             <div id="login-error" class="hidden mt-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
               <div class="flex items-center gap-2">
                 <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,7 +197,6 @@ function renderLogin() {
               </div>
             </div>
 
-            <!-- 密碼提示 -->
             <div class="mt-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
               <div class="flex items-start gap-2">
                 <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -232,18 +215,11 @@ function renderLogin() {
 
     updatePasswordDots();
 
-    // 綁定數字鍵盤事件
     document.querySelectorAll('.num-key-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const key = btn.getAttribute('data-key');
-        handleKeyPress(key);
-      });
+      btn.addEventListener('click', () => handleKeyPress(btn.getAttribute('data-key')));
     });
 
-    // 登入按鈕
     document.getElementById('login-submit-btn').addEventListener('click', doLogin);
-
-    // 返回按鈕
     document.getElementById('back-to-select').addEventListener('click', renderSelectView);
   }
 
@@ -280,18 +256,16 @@ function renderLogin() {
       return;
     }
 
-    const account = selectedBranch.code;
+    const branchCode = selectedBranch.code;
     const password = passwordValue;
-
-    // 帳號轉換為 email
-    const email = `${account.toLowerCase()}@space.com`;
 
     const loginBtn = document.getElementById('login-submit-btn');
     loginBtn.disabled = true;
     loginBtn.textContent = '登入中...';
 
     try {
-      const result = await loginUser(email, password);
+      // 直接傳館別代碼 + 密碼，不再轉換 email
+      const result = await loginUser(branchCode, password);
 
       if (result.success) {
         const profile = getUserProfile();
@@ -323,6 +297,5 @@ function renderLogin() {
     if (errorBox) errorBox.classList.remove('hidden');
   }
 
-  // 初始渲染館別選擇畫面
   renderSelectView();
 }
