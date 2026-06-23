@@ -1,6 +1,6 @@
 /**
  * 登入頁面渲染函數 - 史貝斯商務中心日報系統
- * 提供 Email + 密碼登入，以及快速館別選擇
+ * 提供 帳號 + 密碼 登入，以及快速館別選擇
  */
 
 function renderLogin() {
@@ -12,13 +12,13 @@ function renderLogin() {
     return;
   }
 
-  // 取得上次記住的 email
-  const lastEmail = localStorage.getItem('space_last_email') || '';
+  // 取得上次記住的帳號
+  const lastAccount = localStorage.getItem('space_last_account') || '';
 
   // 館別選項（用於下拉選單）
   const branchOptions = getBranchLoginOptions();
   const branchSelectOptions = branchOptions.map(opt =>
-    `<option value="${escapeHtml(opt.email)}">${escapeHtml(opt.name)}</option>`
+    `<option value="${escapeHtml(opt.code)}">${escapeHtml(opt.name)}</option>`
   ).join('');
 
   // 組合登入頁面 HTML
@@ -40,7 +40,7 @@ function renderLogin() {
                 </svg>
               </div>
               <h2 class="text-xl font-bold text-gray-800">帳號登入</h2>
-              <p class="text-sm text-gray-500 mt-1">請輸入您的 Email 與密碼</p>
+              <p class="text-sm text-gray-500 mt-1">請輸入您的帳號與密碼</p>
             </div>
 
             <!-- 登入表單 -->
@@ -55,15 +55,15 @@ function renderLogin() {
                 </select>
               </div>
 
-              <!-- Email 輸入 -->
+              <!-- 帳號輸入 -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">帳號</label>
                 <input
-                  type="email"
-                  id="login-email"
-                  value="${escapeHtml(lastEmail)}"
-                  placeholder="請輸入 Email"
-                  autocomplete="email"
+                  type="text"
+                  id="login-account"
+                  value="${escapeHtml(lastAccount)}"
+                  placeholder="請輸入帳號（如 tc_ck）"
+                  autocomplete="username"
                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                   required
                 />
@@ -101,11 +101,11 @@ function renderLogin() {
               <div class="flex items-center">
                 <input
                   type="checkbox"
-                  id="remember-email"
-                  ${lastEmail ? 'checked' : ''}
+                  id="remember-account"
+                  ${lastAccount ? 'checked' : ''}
                   class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
                 />
-                <label for="remember-email" class="ml-2 text-sm text-gray-600 cursor-pointer select-none">記住我的 Email</label>
+                <label for="remember-account" class="ml-2 text-sm text-gray-600 cursor-pointer select-none">記住我的帳號</label>
               </div>
 
               <!-- 登入按鈕 -->
@@ -171,25 +171,24 @@ function renderLogin() {
   // ============ 綁定事件 ============
 
   const loginForm = document.getElementById('login-form');
-  const emailInput = document.getElementById('login-email');
+  const accountInput = document.getElementById('login-account');
   const passwordInput = document.getElementById('login-password');
   const branchSelect = document.getElementById('branch-select');
   const loginBtn = document.getElementById('login-btn');
   const loginBtnText = document.getElementById('login-btn-text');
   const errorBox = document.getElementById('login-error');
   const errorText = document.getElementById('login-error-text');
-  const rememberCheckbox = document.getElementById('remember-email');
+  const rememberCheckbox = document.getElementById('remember-account');
   const togglePasswordBtn = document.getElementById('toggle-password');
 
-  // --- 館別下拉選單變更：自動填入 Email ---
+  // --- 館別下拉選單變更：自動填入帳號 ---
   branchSelect.addEventListener('change', () => {
-    const selectedEmail = branchSelect.value;
-    if (selectedEmail) {
-      emailInput.value = selectedEmail;
+    const selectedCode = branchSelect.value;
+    if (selectedCode) {
+      accountInput.value = selectedCode;
       // 自動填入對應密碼提示
-      const branchInfo = getBranchByEmail(selectedEmail);
-      if (branchInfo) {
-        const defaultPassword = BRANCH_PASSWORDS[branchInfo.code];
+      const defaultPassword = BRANCH_PASSWORDS[selectedCode];
+      if (defaultPassword) {
         passwordInput.placeholder = `預設密碼: ${defaultPassword}`;
       }
       passwordInput.focus();
@@ -201,7 +200,6 @@ function renderLogin() {
   togglePasswordBtn.addEventListener('click', () => {
     passwordVisible = !passwordVisible;
     passwordInput.type = passwordVisible ? 'text' : 'password';
-    // 更新圖標
     togglePasswordBtn.innerHTML = passwordVisible
       ? `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -219,7 +217,7 @@ function renderLogin() {
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const email = emailInput.value.trim();
+    const account = accountInput.value.trim();
     const password = passwordInput.value.trim();
 
     // 清除錯誤訊息
@@ -227,9 +225,9 @@ function renderLogin() {
     errorText.textContent = '';
 
     // 基本驗證
-    if (!email) {
-      showError('請輸入 Email');
-      emailInput.focus();
+    if (!account) {
+      showError('請輸入帳號');
+      accountInput.focus();
       return;
     }
     if (!password) {
@@ -238,6 +236,9 @@ function renderLogin() {
       return;
     }
 
+    // 帳號轉換為 email（自動加上 @space.com）
+    const email = account.includes('@') ? account : `${account}@space.com`;
+
     // 設置載入狀態
     setLoading(true);
 
@@ -245,11 +246,11 @@ function renderLogin() {
       const result = await loginUser(email, password);
 
       if (result.success) {
-        // 記住 Email
+        // 記住帳號（記住原始帳號，不含 @space.com）
         if (rememberCheckbox.checked) {
-          localStorage.setItem('space_last_email', email);
+          localStorage.setItem('space_last_account', account);
         } else {
-          localStorage.removeItem('space_last_email');
+          localStorage.removeItem('space_last_account');
         }
 
         // 從 profile 取得角色資訊
