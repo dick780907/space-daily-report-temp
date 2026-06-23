@@ -1,29 +1,50 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 輔助函數：取得當前使用者的角色
     function getUserRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
+    // 輔助函數：取得當前使用者的館別代碼
     function getUserBranch() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branchCode;
     }
+    // 輔助函數：檢查是否為總管理者
     function isMaster() {
       return request.auth != null && getUserRole() == 'master';
     }
+    // 輔助函數：檢查是否為館別人員
     function isBranchUser() {
       return request.auth != null && getUserRole() == 'branch';
     }
 
-    match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isMaster());
+    // accounts 集合：密碼對照表（僅供匿名登入時讀取驗證）
+    match /accounts/{accountId} {
+      allow read: if request.auth != null; // 匿名用戶可讀取（登入驗證用）
       allow write: if request.auth != null && isMaster();
     }
 
-    match /reports/{reportId} {
-      allow read: if request.auth != null && (isMaster() || (isBranchUser() && getUserBranch() == reportId.split('_')[0]));
-      allow write: if request.auth != null && (isMaster() || (isBranchUser() && getUserBranch() == request.resource.data.branch));
+    // users 集合：匿名登入後綁定的館別權限資料
+    match /users/{userId} {
+      // 用戶可讀取自己的資料，管理員可讀取全部
+      allow read: if request.auth != null && (request.auth.uid == userId || isMaster());
+      // 匿名用戶登入時可寫入自己的資料（綁定館別），管理員可寫入全部
+      allow write: if request.auth != null && (request.auth.uid == userId || isMaster());
     }
 
+    // reports 集合：館別人員只能讀寫自己館別的資料，總管理者可讀寫全部
+    match /reports/{reportId} {
+      allow read: if request.auth != null && (
+        isMaster() ||
+        (isBranchUser() && getUserBranch() == reportId.split('_')[0])
+      );
+      allow write: if request.auth != null && (
+        isMaster() ||
+        (isBranchUser() && getUserBranch() == request.resource.data.branch)
+      );
+    }
+
+    // branches 集合：所有人可讀取館別列表（登入後）
     match /branches/{branchId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && isMaster();
