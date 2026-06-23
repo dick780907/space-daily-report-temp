@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function getUserBranch() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.branchCode;
+    }
+    function isMaster() {
+      return request.auth != null && getUserRole() == 'master';
+    }
+    function isBranchUser() {
+      return request.auth != null && getUserRole() == 'branch';
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isMaster());
+      allow write: if request.auth != null && isMaster();
+    }
+
+    match /reports/{reportId} {
+      allow read: if request.auth != null && (isMaster() || (isBranchUser() && getUserBranch() == reportId.split('_')[0]));
+      allow write: if request.auth != null && (isMaster() || (isBranchUser() && getUserBranch() == request.resource.data.branch));
+    }
+
+    match /branches/{branchId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isMaster();
+    }
+  }
+}
