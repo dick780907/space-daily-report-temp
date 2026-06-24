@@ -151,6 +151,51 @@ function generateDailyEmailBody(date) {
   const dateLabel = formatDate(date);
   const dayStatus = getBusinessDayStatus(date);
 
+  // 取得總管理處數據
+  const masterReport = getReport('MASTER', date);
+  const masterRow = masterReport ? {
+    branchName: '總管理處',
+    filled: true,
+    author: masterReport.author || '',
+    officeQuery: masterReport.officeQuery || 0,
+    registerQuery: masterReport.registerQuery || 0,
+    visits: masterReport.visits || 0,
+    officeRenew: masterReport.officeRenew?.count || 0,
+    officeNew: masterReport.officeNew?.count || 0,
+    registerNew: masterReport.registerNew || 0,
+    registerRenew: masterReport.registerRenew || 0,
+    signTotal: calcSignTotal(masterReport),
+    officeCancel: masterReport.officeCancel?.count || 0,
+    officeDeposit: masterReport.officeDeposit?.count || 0,
+    occupancyRate: calcOccupancyRate(masterReport.rentedCount || 0, masterReport.totalCount || 0)
+  } : {
+    branchName: '總管理處',
+    filled: false,
+    author: '',
+    officeQuery: 0, registerQuery: 0, visits: 0,
+    officeRenew: 0, officeNew: 0, registerNew: 0, registerRenew: 0,
+    signTotal: 0, officeCancel: 0, officeDeposit: 0, occupancyRate: 0
+  };
+
+  // 全館合計包含總管理處
+  const allRows = [...rows, masterRow];
+  const grandTotals = {
+    officeQuery: allRows.reduce((s, r) => s + r.officeQuery, 0),
+    registerQuery: allRows.reduce((s, r) => s + r.registerQuery, 0),
+    visits: allRows.reduce((s, r) => s + r.visits, 0),
+    officeRenew: allRows.reduce((s, r) => s + r.officeRenew, 0),
+    officeNew: allRows.reduce((s, r) => s + r.officeNew, 0),
+    registerNew: allRows.reduce((s, r) => s + r.registerNew, 0),
+    registerRenew: allRows.reduce((s, r) => s + r.registerRenew, 0),
+    signTotal: allRows.reduce((s, r) => s + r.signTotal, 0),
+    officeCancel: allRows.reduce((s, r) => s + r.officeCancel, 0),
+    officeDeposit: allRows.reduce((s, r) => s + r.officeDeposit, 0),
+    occupancyRate: calcOccupancyRate(
+      allRows.reduce((s, r) => s + (r.rentedCount || 0), 0),
+      allRows.reduce((s, r) => s + (r.totalCount || 0), 0)
+    )
+  };
+
   let body = `史貝斯商務中心 日報統計表\n`;
   body += `================================\n`;
   body += `日期：${dateLabel}\n`;
@@ -169,15 +214,25 @@ function generateDailyEmailBody(date) {
     body += `\n`;
   });
 
+  // 總管理處
+  body += `【總管理處】${masterRow.filled ? '已填報' : '未填報'} ${masterRow.filled ? '(' + masterRow.author + ')' : ''}\n`;
+  if (masterRow.filled) {
+    body += `  辦公室查詢：${masterRow.officeQuery} | 營業登記查詢：${masterRow.registerQuery} | 參觀：${masterRow.visits}\n`;
+    body += `  辦公室續約：${masterRow.officeRenew} | 辦公室新簽：${masterRow.officeNew}\n`;
+    body += `  營業登記新簽：${masterRow.registerNew} | 營業登記續約：${masterRow.registerRenew}\n`;
+    body += `  退租：${masterRow.officeCancel} | 付定：${masterRow.officeDeposit} | 出租率：${masterRow.occupancyRate}%\n`;
+  }
+  body += `\n`;
+
   // 全館合計
   body += `================================\n`;
-  body += `【全館合計】\n`;
-  body += `辦公室查詢：${totals.officeQuery} | 營業登記查詢：${totals.registerQuery} | 參觀：${totals.visits}\n`;
-  body += `辦公室續約：${totals.officeRenew} | 辦公室新簽：${totals.officeNew}\n`;
-  body += `營業登記新簽：${totals.registerNew} | 營業登記續約：${totals.registerRenew}\n`;
-  body += `簽約合計：${totals.signTotal}\n`;
-  body += `退租：${totals.officeCancel} | 付定：${totals.officeDeposit}\n`;
-  body += `平均出租率：${totals.occupancyRate}%\n`;
+  body += `【全館合計（含總管理處）】\n`;
+  body += `辦公室查詢：${grandTotals.officeQuery} | 營業登記查詢：${grandTotals.registerQuery} | 參觀：${grandTotals.visits}\n`;
+  body += `辦公室續約：${grandTotals.officeRenew} | 辦公室新簽：${grandTotals.officeNew}\n`;
+  body += `營業登記新簽：${grandTotals.registerNew} | 營業登記續約：${grandTotals.registerRenew}\n`;
+  body += `簽約合計：${grandTotals.signTotal}\n`;
+  body += `退租：${grandTotals.officeCancel} | 付定：${grandTotals.officeDeposit}\n`;
+  body += `平均出租率：${grandTotals.occupancyRate}%\n`;
   body += `================================\n\n`;
   body += `本郵件由史貝斯商務中心日報系統自動生成\n`;
 
@@ -192,8 +247,53 @@ function generateDailyEmailHTML(date) {
   const dateLabel = formatDate(date);
   const dayStatus = getBusinessDayStatus(date);
 
-  let filledCount = rows.filter(r => r.filled).length;
-  let totalCount = rows.length;
+  // 取得總管理處數據
+  const masterReport = getReport('MASTER', date);
+  const masterRow = masterReport ? {
+    branchName: '總管理處',
+    filled: true,
+    author: masterReport.author || '',
+    officeQuery: masterReport.officeQuery || 0,
+    registerQuery: masterReport.registerQuery || 0,
+    visits: masterReport.visits || 0,
+    officeRenew: masterReport.officeRenew?.count || 0,
+    officeNew: masterReport.officeNew?.count || 0,
+    registerNew: masterReport.registerNew || 0,
+    registerRenew: masterReport.registerRenew || 0,
+    signTotal: calcSignTotal(masterReport),
+    officeCancel: masterReport.officeCancel?.count || 0,
+    officeDeposit: masterReport.officeDeposit?.count || 0,
+    occupancyRate: calcOccupancyRate(masterReport.rentedCount || 0, masterReport.totalCount || 0)
+  } : {
+    branchName: '總管理處',
+    filled: false,
+    author: '',
+    officeQuery: 0, registerQuery: 0, visits: 0,
+    officeRenew: 0, officeNew: 0, registerNew: 0, registerRenew: 0,
+    signTotal: 0, officeCancel: 0, officeDeposit: 0, occupancyRate: 0
+  };
+
+  // 全館合計包含總管理處
+  const allRows = [...rows, masterRow];
+  const grandTotals = {
+    officeQuery: allRows.reduce((s, r) => s + r.officeQuery, 0),
+    registerQuery: allRows.reduce((s, r) => s + r.registerQuery, 0),
+    visits: allRows.reduce((s, r) => s + r.visits, 0),
+    officeRenew: allRows.reduce((s, r) => s + r.officeRenew, 0),
+    officeNew: allRows.reduce((s, r) => s + r.officeNew, 0),
+    registerNew: allRows.reduce((s, r) => s + r.registerNew, 0),
+    registerRenew: allRows.reduce((s, r) => s + r.registerRenew, 0),
+    signTotal: allRows.reduce((s, r) => s + r.signTotal, 0),
+    officeCancel: allRows.reduce((s, r) => s + r.officeCancel, 0),
+    officeDeposit: allRows.reduce((s, r) => s + r.officeDeposit, 0),
+    occupancyRate: calcOccupancyRate(
+      allRows.reduce((s, r) => s + (r.rentedCount || 0), 0),
+      allRows.reduce((s, r) => s + (r.totalCount || 0), 0)
+    )
+  };
+
+  let filledCount = allRows.filter(r => r.filled).length;
+  let totalCount = allRows.length;
 
   let html = `<!DOCTYPE html>
 <html>
@@ -202,7 +302,7 @@ function generateDailyEmailHTML(date) {
   <div style="max-width:700px; margin:0 auto;">
     <div style="background:linear-gradient(135deg,#7c3aed,#a855f7); color:#fff; padding:20px; border-radius:12px 12px 0 0;">
       <h2 style="margin:0; font-size:20px;">史貝斯商務中心 日報統計表</h2>
-      <p style="margin:5px 0 0; opacity:0.9; font-size:14px;">${dateLabel} | ${dayStatus.reason} | 已填報 ${filledCount}/${totalCount} 館</p>
+      <p style="margin:5px 0 0; opacity:0.9; font-size:14px;">${dateLabel} | ${dayStatus.reason} | 已填報 ${filledCount}/${totalCount} 館（含總管理處）</p>
     </div>
     <div style="background:#fff; padding:20px; border:1px solid #e5e7eb; border-top:none;">
       <table style="width:100%; border-collapse:collapse; font-size:13px;">
@@ -237,14 +337,30 @@ function generateDailyEmailHTML(date) {
           </tr>`;
   });
 
+  // 總管理處行
+  const mStatusColor = masterRow.filled ? '#16a34a' : '#dc2626';
+  const mStatusBg = masterRow.filled ? '#dcfce7' : '#fee2e2';
+  const mStatusLabel = masterRow.filled ? '已填報' : '未填報';
+  html += `
+          <tr style="border-bottom:1px solid #f3f4f6; background:#f0f9ff;">
+            <td style="padding:8px; border:1px solid #f3f4f6; font-weight:600;">🏢 總管理處</td>
+            <td style="padding:8px; border:1px solid #f3f4f6; text-align:center;"><span style="background:${mStatusBg}; color:${mStatusColor}; padding:2px 8px; border-radius:10px; font-size:12px; font-weight:600;">${mStatusLabel}</span></td>
+            <td style="padding:8px; border:1px solid #f3f4f6;">${masterRow.author || '-'}</td>
+            <td style="padding:8px; border:1px solid #f3f4f6; text-align:center;">${masterRow.officeQuery}</td>
+            <td style="padding:8px; border:1px solid #f3f4f6; text-align:center;">${masterRow.registerQuery}</td>
+            <td style="padding:8px; border:1px solid #f3f4f6; text-align:center;">${masterRow.visits}</td>
+            <td style="padding:8px; border:1px solid #f3f4f6; text-align:center; font-weight:700;">${masterRow.signTotal}</td>
+            <td style="padding:8px; border:1px solid #f3f4f6; text-align:center; font-weight:600; color:${masterRow.occupancyRate >= 80 ? '#16a34a' : masterRow.occupancyRate >= 50 ? '#ca8a04' : '#dc2626'};">${masterRow.occupancyRate}%</td>
+          </tr>`;
+
   html += `
           <tr style="background:#f3e8ff; font-weight:700;">
-            <td style="padding:8px; border:1px solid #d8b4fe;" colspan="3">全館合計</td>
-            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${totals.officeQuery}</td>
-            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${totals.registerQuery}</td>
-            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${totals.visits}</td>
-            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${totals.signTotal}</td>
-            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${totals.occupancyRate}%</td>
+            <td style="padding:8px; border:1px solid #d8b4fe;" colspan="3">全館合計（含總管理處）</td>
+            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${grandTotals.officeQuery}</td>
+            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${grandTotals.registerQuery}</td>
+            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${grandTotals.visits}</td>
+            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${grandTotals.signTotal}</td>
+            <td style="padding:8px; border:1px solid #d8b4fe; text-align:center;">${grandTotals.occupancyRate}%</td>
           </tr>
         </tbody>
       </table>
