@@ -21,7 +21,7 @@ function renderAdmin() {
   // ===== 已登入狀態：顯示後台頁面 =====
   const tabs = [
     { id: 'daily', label: '日報總表' },
-    { id: 'queries', label: '分館查詢' },
+    { id: 'branchEdit', label: '分館日報編輯' },
     { id: 'monthly', label: '月報分析' },
     { id: 'yearly', label: '年報總覽' },
     { id: 'data', label: '資料管理' }
@@ -111,8 +111,8 @@ function loadTabContent(tabId) {
     case 'daily':
       renderDailyTab(container);
       break;
-    case 'queries':
-      renderQueriesTab(container);
+    case 'branchEdit':
+      renderBranchEditTab(container);
       break;
     case 'monthly':
       renderMonthlyTab(container);
@@ -727,267 +727,321 @@ function refreshDailyTable(date) {
 }
 
 // ============================================
-// Tab 2: 分館查詢記錄
+// Tab 2: 分館日報編輯（總管理者直接修改各分館日報）
 // ============================================
 
-function renderQueriesTab(container) {
+function renderBranchEditTab(container) {
+  const today = todayStr();
+  const branchOptions = BRANCHES.map(b => `<option value="${b.code}">${b.name}</option>`).join('');
+
   container.innerHTML = `
     <div class="space-y-4">
-      <!-- 統計卡片 -->
-      <div id="queries-stats" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
-
-      <!-- 工具列 -->
+      <!-- 館別選擇 + 日期選擇 -->
       <div class="bg-white rounded-2xl p-5 shadow-lg shadow-gray-100/50 border border-gray-100">
-        <div class="flex flex-col lg:flex-row gap-3">
-          <div class="flex-1 flex flex-wrap gap-3">
-            <select id="queries-filter-status" class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-              <option value="">全部狀態</option>
-              <option value="pending">待處理</option>
-              <option value="processing">處理中</option>
-              <option value="completed">已完成</option>
+        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">✏️ 分館日報編輯</h3>
+        <p class="text-sm text-gray-500 mb-4">選擇分館與日期，直接修改該分館的日報內容。</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">選擇分館 <span class="text-red-500">*</span></label>
+            <select id="bedit-branch" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+              <option value="">請選擇分館</option>
+              ${branchOptions}
             </select>
-            <select id="queries-filter-branch" class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-              <option value="">全部館別</option>
-              ${BRANCHES.map(b => `<option value="${b.code}">${b.name}</option>`).join('')}
-            </select>
-            <input type="text" id="queries-search" placeholder="搜尋客戶姓名或內容..."
-              class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[200px]"/>
           </div>
-          <div class="flex gap-3">
-            <button id="queries-export-btn" class="bg-white text-purple-600 border-2 border-purple-200 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-purple-50 transition-all flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-              匯出 CSV
-            </button>
-            <button id="queries-add-btn" class="bg-gradient-to-r from-purple-600 to-purple-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-lg shadow-purple-200 hover:shadow-xl transition-all flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-              新增查詢
-            </button>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">選擇日期 <span class="text-red-500">*</span></label>
+            <input type="date" id="bedit-date" value="${today}"
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
           </div>
+        </div>
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="bedit-load-btn"
+            class="bg-gradient-to-r from-purple-600 to-purple-500 text-white px-6 py-3 rounded-xl font-medium shadow-lg shadow-purple-200 hover:shadow-xl transition-all flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            載入日報
+          </button>
+          <span id="bedit-status" class="flex items-center text-sm text-gray-500"></span>
         </div>
       </div>
 
-      <!-- 新增查詢表單（預設隱藏） -->
-      <div id="queries-form-container" class="hidden">
-        <div class="bg-white rounded-2xl p-5 shadow-lg shadow-gray-100/50 border border-gray-100">
-          <h3 class="text-lg font-bold text-gray-800 mb-4">📝 新增分館轉介查詢</h3>
-          <form id="queries-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">日期 <span class="text-red-500">*</span></label>
-              <input type="date" name="q-date" value="${todayStr()}" required
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"/>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">來源館別 <span class="text-red-500">*</span></label>
-              <select name="q-sourceBranch" required
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                <option value="">請選擇</option>
-                ${BRANCHES.map(b => `<option value="${b.code}">${b.name}</option>`).join('')}
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">客戶姓名 <span class="text-red-500">*</span></label>
-              <input type="text" name="q-customerName" placeholder="請輸入客戶姓名" required
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"/>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">聯絡方式</label>
-              <input type="text" name="q-contact" placeholder="電話 / Email / Line"
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"/>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">查詢類型</label>
-              <select name="q-queryType"
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                ${QUERY_TYPE_OPTIONS.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">處理狀態</label>
-              <select name="q-status"
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                <option value="pending">待處理</option>
-                <option value="processing">處理中</option>
-                <option value="completed">已完成</option>
-              </select>
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">查詢內容 <span class="text-red-500">*</span></label>
-              <textarea name="q-content" rows="3" placeholder="請描述客戶的查詢內容..." required
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"></textarea>
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1">備註</label>
-              <textarea name="q-note" rows="2" placeholder="其他備註事項..."
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"></textarea>
-            </div>
-            <div class="md:col-span-2 flex justify-end gap-3">
-              <button type="button" id="queries-cancel-btn" class="text-gray-500 hover:text-gray-700 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors">取消</button>
-              <button type="submit" class="bg-gradient-to-r from-purple-600 to-purple-500 text-white px-6 py-2.5 rounded-xl text-sm font-medium shadow-lg shadow-purple-200 hover:shadow-xl transition-all">儲存</button>
-            </div>
-          </form>
+      <!-- 日報編輯表單（預設隱藏，載入後顯示） -->
+      <div id="bedit-form-card" class="hidden bg-white rounded-2xl shadow-lg shadow-gray-100/50 border border-gray-100 overflow-hidden">
+        <div class="bg-gradient-to-r from-purple-600 to-purple-500 text-white px-5 py-3">
+          <h4 class="font-bold" id="bedit-form-title">編輯日報</h4>
         </div>
-      </div>
+        <div class="p-5 space-y-5">
+          <!-- 基本資訊 -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">填表人 <span class="text-red-500">*</span></label>
+              <input type="text" id="bedit-author" placeholder="請輸入填表人姓名"
+                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+            </div>
+          </div>
 
-      <!-- 查詢列表 -->
-      <div class="bg-white rounded-2xl shadow-lg shadow-gray-100/50 border border-gray-100 overflow-hidden">
-        <div id="queries-list" class="overflow-x-auto"></div>
+          <!-- 查詢區 -->
+          <div>
+            <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">🔍 查詢</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">辦公室查詢</label>
+                <input type="number" id="bedit-officeQuery" value="0" min="0"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">營業登記查詢</label>
+                <input type="number" id="bedit-registerQuery" value="0" min="0"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+              </div>
+            </div>
+          </div>
+
+          <!-- 參觀 -->
+          <div>
+            <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">👥 參觀</h4>
+            <input type="number" id="bedit-visits" value="0" min="0"
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+          </div>
+
+          <!-- 簽約區 -->
+          <div>
+            <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">📝 簽約</h4>
+            <div class="space-y-3">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">辦公室續約（間數）</label>
+                  <input type="number" id="bedit-officeRenewCount" value="0" min="0"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">辦公室續約（房號）</label>
+                  <input type="text" id="bedit-officeRenewRooms" placeholder="例：A01,A02"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">辦公室新簽（間數）</label>
+                  <input type="number" id="bedit-officeNewCount" value="0" min="0"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">辦公室新簽（房號）</label>
+                  <input type="text" id="bedit-officeNewRooms" placeholder="例：B01,B02"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">營業登記新簽</label>
+                  <input type="number" id="bedit-registerNew" value="0" min="0"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500 mb-1">營業登記續約</label>
+                  <input type="number" id="bedit-registerRenew" value="0" min="0"
+                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 退租 -->
+          <div>
+            <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">🚪 退租</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">辦公室退租（間數）</label>
+                <input type="number" id="bedit-officeCancelCount" value="0" min="0"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">辦公室退租（房號）</label>
+                <input type="text" id="bedit-officeCancelRooms" placeholder="例：C01"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+              </div>
+            </div>
+          </div>
+
+          <!-- 付定 -->
+          <div>
+            <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">💰 付定</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">辦公室付定（間數）</label>
+                <input type="number" id="bedit-officeDepositCount" value="0" min="0"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">辦公室付定（房號）</label>
+                <input type="text" id="bedit-officeDepositRooms" placeholder="例：D01"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+              </div>
+            </div>
+          </div>
+
+          <!-- 出租率 -->
+          <div>
+            <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">📊 出租率</h4>
+            <div class="grid grid-cols-2 gap-4 mb-2">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">已租間數</label>
+                <input type="number" id="bedit-rentedCount" value="0" min="0"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">總間數</label>
+                <input type="number" id="bedit-totalCount" value="0" min="0"
+                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+              </div>
+            </div>
+            <div class="text-center py-3 bg-purple-50 rounded-xl">
+              <span class="text-gray-600 text-sm">出租率：</span>
+              <span id="bedit-occupancy-rate" class="text-2xl font-bold text-purple-700">0%</span>
+            </div>
+          </div>
+
+          <!-- 儲存按鈕 -->
+          <button id="bedit-save-btn"
+            class="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white px-6 py-3 rounded-xl font-medium shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all text-lg">
+            ✓ 儲存分館日報
+          </button>
+        </div>
       </div>
     </div>
   `;
 
-  // 刷新統計
-  refreshQueriesStats();
-
-  // 篩選事件
-  document.getElementById('queries-filter-status').addEventListener('change', refreshQueriesList);
-  document.getElementById('queries-filter-branch').addEventListener('change', refreshQueriesList);
-  document.getElementById('queries-search').addEventListener('input', debounce(refreshQueriesList, 300));
-
-  // 新增按鈕
-  document.getElementById('queries-add-btn').addEventListener('click', () => {
-    document.getElementById('queries-form-container').classList.remove('hidden');
-    document.getElementById('queries-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // 出租率即時計算
+  ['bedit-rentedCount', 'bedit-totalCount'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateBranchEditOccupancy);
   });
 
-  // 取消按鈕
-  document.getElementById('queries-cancel-btn').addEventListener('click', () => {
-    document.getElementById('queries-form-container').classList.add('hidden');
-    document.getElementById('queries-form').reset();
-  });
+  // 載入按鈕
+  document.getElementById('bedit-load-btn').addEventListener('click', loadBranchEditForm);
 
-  // 表單提交
-  document.getElementById('queries-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const data = {
-      date: form.querySelector('[name="q-date"]').value,
-      sourceBranch: form.querySelector('[name="q-sourceBranch"]').value,
-      customerName: form.querySelector('[name="q-customerName"]').value.trim(),
-      contact: form.querySelector('[name="q-contact"]').value.trim(),
-      queryType: form.querySelector('[name="q-queryType"]').value,
-      content: form.querySelector('[name="q-content"]').value.trim(),
-      status: form.querySelector('[name="q-status"]').value,
-      note: form.querySelector('[name="q-note"]').value.trim()
-    };
-    if (!data.date || !data.sourceBranch || !data.customerName || !data.content) {
-      showToast('請填寫必填欄位', 'error'); return;
-    }
-    addQuery(data);
-    showToast('查詢記錄已新增', 'success');
-    form.reset();
-    form.querySelector('[name="q-date"]').value = todayStr();
-    document.getElementById('queries-form-container').classList.add('hidden');
-    refreshQueriesStats();
-    refreshQueriesList();
-  });
-
-  // 匯出按鈕
-  document.getElementById('queries-export-btn').addEventListener('click', () => {
-    exportQueriesToCSV();
-    showToast('CSV 匯出成功', 'success');
-  });
-
-  // 初始渲染列表
-  refreshQueriesList();
+  // 儲存按鈕
+  document.getElementById('bedit-save-btn').addEventListener('click', saveBranchEditReport);
 }
 
-function refreshQueriesStats() {
-  const stats = getQueryStats();
-  document.getElementById('queries-stats').innerHTML = `
-    ${StatCard('查詢總數', stats.total, '筆', 'purple')}
-    ${StatCard('待處理', stats.pending, '筆', 'red')}
-    ${StatCard('處理中', stats.processing, '筆', 'amber')}
-    ${StatCard('已完成', stats.completed, '筆', 'green')}
-  `;
+function updateBranchEditOccupancy() {
+  const rented = parseInt(document.getElementById('bedit-rentedCount')?.value || '0', 10);
+  const total = parseInt(document.getElementById('bedit-totalCount')?.value || '0', 10);
+  const rate = calcOccupancyRate(rented, total);
+  const el = document.getElementById('bedit-occupancy-rate');
+  if (el) el.textContent = rate + '%';
 }
 
-function refreshQueriesList() {
-  const container = document.getElementById('queries-list');
-  const statusFilter = document.getElementById('queries-filter-status').value;
-  const branchFilter = document.getElementById('queries-filter-branch').value;
-  const keyword = document.getElementById('queries-search').value.trim();
+function loadBranchEditForm() {
+  const branchCode = document.getElementById('bedit-branch').value;
+  const date = document.getElementById('bedit-date').value;
+  const statusEl = document.getElementById('bedit-status');
+  const formCard = document.getElementById('bedit-form-card');
+  const formTitle = document.getElementById('bedit-form-title');
 
-  const queries = getAllQueries({
-    status: statusFilter,
-    sourceBranch: branchFilter,
-    keyword: keyword
-  });
-
-  if (queries.length === 0) {
-    container.innerHTML = `
-      <div class="p-12 text-center">
-        <div class="text-5xl mb-3">🔍</div>
-        <p class="text-gray-500 text-sm">暫無查詢記錄</p>
-        ${!statusFilter && !branchFilter && !keyword ? '<p class="text-gray-400 text-xs mt-1">點擊「新增查詢」開始記錄分館轉介</p>' : '<p class="text-gray-400 text-xs mt-1">請調整篩選條件</p>'}
-      </div>`;
+  if (!branchCode) {
+    showToast('請先選擇分館', 'error');
+    return;
+  }
+  if (!date) {
+    showToast('請先選擇日期', 'error');
     return;
   }
 
-  const statusOrder = { pending: 0, processing: 1, completed: 2 };
-  queries.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || b.date.localeCompare(a.date));
+  const branch = BRANCH_MAP[branchCode];
+  const report = getReport(branchCode, date);
 
-  container.innerHTML = `
-    <table class="w-full min-w-[900px] text-sm">
-      <thead>
-        <tr class="bg-purple-50 text-purple-900">
-          <th class="px-3 py-3 text-left font-semibold whitespace-nowrap">日期</th>
-          <th class="px-3 py-3 text-left font-semibold whitespace-nowrap">來源館別</th>
-          <th class="px-3 py-3 text-left font-semibold whitespace-nowrap">客戶姓名</th>
-          <th class="px-3 py-3 text-left font-semibold whitespace-nowrap">聯絡方式</th>
-          <th class="px-3 py-3 text-left font-semibold whitespace-nowrap">類型</th>
-          <th class="px-3 py-3 text-left font-semibold whitespace-nowrap">查詢內容</th>
-          <th class="px-3 py-3 text-center font-semibold whitespace-nowrap">狀態</th>
-          <th class="px-3 py-3 text-left font-semibold whitespace-nowrap">操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${queries.map(q => {
-          const sl = getQueryStatusLabel(q.status);
-          return `
-            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors" data-qid="${q.id}">
-              <td class="px-3 py-3 text-gray-600 whitespace-nowrap">${formatDateShort(q.date)}</td>
-              <td class="px-3 py-3 font-medium text-gray-800 whitespace-nowrap">${escapeHtml(BRANCH_MAP[q.sourceBranch]?.name || q.sourceBranch)}</td>
-              <td class="px-3 py-3 font-medium text-gray-800 whitespace-nowrap">${escapeHtml(q.customerName)}</td>
-              <td class="px-3 py-3 text-gray-600 whitespace-nowrap">${escapeHtml(q.contact || '')}</td>
-              <td class="px-3 py-3 text-gray-600 whitespace-nowrap">${escapeHtml(q.queryType)}</td>
-              <td class="px-3 py-3 text-gray-700 max-w-[200px] truncate" title="${escapeHtml(q.content)}">${escapeHtml(q.content)}</td>
-              <td class="px-3 py-3 text-center whitespace-nowrap">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${sl.bgClass} ${sl.textClass} border ${sl.borderClass}">${sl.label}</span>
-              </td>
-              <td class="px-3 py-3 whitespace-nowrap">
-                <div class="flex gap-1.5">
-                  ${q.status !== 'processing' ? `<button class="q-action-process text-amber-600 hover:text-amber-800 text-xs px-2 py-1 rounded hover:bg-amber-50 transition-colors font-medium" data-id="${q.id}">處理中</button>` : ''}
-                  ${q.status !== 'completed' ? `<button class="q-action-complete text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50 transition-colors font-medium" data-id="${q.id}">已完成</button>` : ''}
-                  ${q.status !== 'pending' ? `<button class="q-action-pending text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors font-medium" data-id="${q.id}">待處理</button>` : ''}
-                  <button class="q-action-delete text-gray-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors" data-id="${q.id}">刪除</button>
-                </div>
-              </td>
-            </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
+  if (report) {
+    // 已有資料，載入
+    document.getElementById('bedit-author').value = report.author || '';
+    document.getElementById('bedit-officeQuery').value = report.officeQuery || 0;
+    document.getElementById('bedit-registerQuery').value = report.registerQuery || 0;
+    document.getElementById('bedit-visits').value = report.visits || 0;
+    document.getElementById('bedit-officeRenewCount').value = report.officeRenew?.count || 0;
+    document.getElementById('bedit-officeRenewRooms').value = report.officeRenew?.rooms || '';
+    document.getElementById('bedit-officeNewCount').value = report.officeNew?.count || 0;
+    document.getElementById('bedit-officeNewRooms').value = report.officeNew?.rooms || '';
+    document.getElementById('bedit-registerNew').value = report.registerNew || 0;
+    document.getElementById('bedit-registerRenew').value = report.registerRenew || 0;
+    document.getElementById('bedit-officeCancelCount').value = report.officeCancel?.count || 0;
+    document.getElementById('bedit-officeCancelRooms').value = report.officeCancel?.rooms || '';
+    document.getElementById('bedit-officeDepositCount').value = report.officeDeposit?.count || 0;
+    document.getElementById('bedit-officeDepositRooms').value = report.officeDeposit?.rooms || '';
+    document.getElementById('bedit-rentedCount').value = report.rentedCount || 0;
+    document.getElementById('bedit-totalCount').value = report.totalCount || 0;
+    statusEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">已載入現有資料</span>';
+  } else {
+    // 無資料，清空表單
+    document.getElementById('bedit-author').value = '';
+    document.getElementById('bedit-officeQuery').value = 0;
+    document.getElementById('bedit-registerQuery').value = 0;
+    document.getElementById('bedit-visits').value = 0;
+    document.getElementById('bedit-officeRenewCount').value = 0;
+    document.getElementById('bedit-officeRenewRooms').value = '';
+    document.getElementById('bedit-officeNewCount').value = 0;
+    document.getElementById('bedit-officeNewRooms').value = '';
+    document.getElementById('bedit-registerNew').value = 0;
+    document.getElementById('bedit-registerRenew').value = 0;
+    document.getElementById('bedit-officeCancelCount').value = 0;
+    document.getElementById('bedit-officeCancelRooms').value = '';
+    document.getElementById('bedit-officeDepositCount').value = 0;
+    document.getElementById('bedit-officeDepositRooms').value = '';
+    document.getElementById('bedit-rentedCount').value = 0;
+    document.getElementById('bedit-totalCount').value = 0;
+    statusEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">該日期尚無資料，可新增</span>';
+  }
 
-  // 綁定操作按鈕
-  container.querySelectorAll('.q-action-process').forEach(btn => {
-    btn.addEventListener('click', () => { updateQueryStatus(btn.dataset.id, 'processing'); refreshQueriesStats(); refreshQueriesList(); showToast('已更新為處理中', 'success'); });
-  });
-  container.querySelectorAll('.q-action-complete').forEach(btn => {
-    btn.addEventListener('click', () => { updateQueryStatus(btn.dataset.id, 'completed'); refreshQueriesStats(); refreshQueriesList(); showToast('已標記為已完成', 'success'); });
-  });
-  container.querySelectorAll('.q-action-pending').forEach(btn => {
-    btn.addEventListener('click', () => { updateQueryStatus(btn.dataset.id, 'pending'); refreshQueriesStats(); refreshQueriesList(); showToast('已更新為待處理', 'info'); });
-  });
-  container.querySelectorAll('.q-action-delete').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      if (await confirmAction('確定要刪除此查詢記錄嗎？')) {
-        deleteQuery(btn.dataset.id);
-        refreshQueriesStats();
-        refreshQueriesList();
-        showToast('已刪除', 'success');
-      }
-    });
-  });
+  updateBranchEditOccupancy();
+  formTitle.textContent = `編輯 ${branch?.name || branchCode} - ${formatDate(date)} 日報`;
+  formCard.classList.remove('hidden');
+  formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function saveBranchEditReport() {
+  const branchCode = document.getElementById('bedit-branch').value;
+  const date = document.getElementById('bedit-date').value;
+  const author = document.getElementById('bedit-author').value.trim();
+
+  if (!branchCode) { showToast('請選擇分館', 'error'); return; }
+  if (!date) { showToast('請選擇日期', 'error'); return; }
+  if (!author) { showToast('請填寫填表人', 'error'); return; }
+
+  const report = {
+    id: branchCode + '_' + date,
+    branch: branchCode,
+    date: date,
+    author: author,
+    officeQuery: parseInt(document.getElementById('bedit-officeQuery').value || '0', 10),
+    registerQuery: parseInt(document.getElementById('bedit-registerQuery').value || '0', 10),
+    visits: parseInt(document.getElementById('bedit-visits').value || '0', 10),
+    officeRenew: {
+      count: parseInt(document.getElementById('bedit-officeRenewCount').value || '0', 10),
+      rooms: document.getElementById('bedit-officeRenewRooms').value || ''
+    },
+    officeNew: {
+      count: parseInt(document.getElementById('bedit-officeNewCount').value || '0', 10),
+      rooms: document.getElementById('bedit-officeNewRooms').value || ''
+    },
+    registerNew: parseInt(document.getElementById('bedit-registerNew').value || '0', 10),
+    registerRenew: parseInt(document.getElementById('bedit-registerRenew').value || '0', 10),
+    officeCancel: {
+      count: parseInt(document.getElementById('bedit-officeCancelCount').value || '0', 10),
+      rooms: document.getElementById('bedit-officeCancelRooms').value || ''
+    },
+    officeDeposit: {
+      count: parseInt(document.getElementById('bedit-officeDepositCount').value || '0', 10),
+      rooms: document.getElementById('bedit-officeDepositRooms').value || ''
+    },
+    rentedCount: parseInt(document.getElementById('bedit-rentedCount').value || '0', 10),
+    totalCount: parseInt(document.getElementById('bedit-totalCount').value || '0', 10)
+  };
+
+  saveReport(report);
+  const branchName = BRANCH_MAP[branchCode]?.name || branchCode;
+  showToast(`${branchName} ${formatDate(date)} 日報儲存成功！`, 'success');
+
+  const statusEl = document.getElementById('bedit-status');
+  statusEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">已儲存</span>';
 }
 
 // ============================================
