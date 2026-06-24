@@ -24,8 +24,7 @@ function renderHome() {
 
 function _renderHomeContent() {
   var app = document.getElementById('app');
-  const userName = getCurrentUserDisplayName();
-  const userEmail = getCurrentUserEmail();
+  const userName = getCurrentUserName();
   const userBranchCode = getUserBranchCode();
   const master = isMaster();
 
@@ -46,7 +45,7 @@ function _renderHomeContent() {
                 <span class="text-4xl">👑</span>
               </div>
               <h2 class="text-2xl font-bold text-gray-800 mb-1">歡迎，管理員</h2>
-              <p class="text-sm text-gray-500">${escapeHtml(userEmail)}</p>
+              <p class="text-sm text-gray-500">${escapeHtml(userName || '')}</p>
 
               <div class="mt-4 inline-flex items-center gap-2 bg-purple-50 text-purple-700 text-sm font-medium px-4 py-1.5 rounded-full">
                 <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
@@ -128,8 +127,8 @@ function _renderHomeContent() {
               <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br ${gradientClass} flex items-center justify-center mb-4 shadow-lg">
                 <span class="text-4xl">🏢</span>
               </div>
-              <h2 class="text-2xl font-bold text-gray-800 mb-1">歡迎，${escapeHtml(userName)}</h2>
-              <p class="text-sm text-gray-500">${escapeHtml(userEmail)}</p>
+              <h2 class="text-2xl font-bold text-gray-800 mb-1">歡迎，${escapeHtml(userName || '')}</h2>
+              <p class="text-sm text-gray-500">${escapeHtml(branch?.name || userBranchCode)}</p>
 
               <div class="mt-4 flex items-center justify-center gap-3">
                 <span class="inline-flex items-center gap-1.5 bg-gray-100 text-gray-600 text-sm font-mono px-3 py-1 rounded-full">
