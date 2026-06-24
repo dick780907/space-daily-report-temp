@@ -40,7 +40,7 @@ const BRANCH_ACCOUNTS = {
 
 // ============ 館別密碼對照表 ============
 const BRANCH_PASSWORDS = {
-  'master': 'Master@2024',
+  'master': '9999',
   'TC_CK': 'TC_CK123',
   'TC_YT': 'TC_YT123',
   'TC_CC': 'TC_CC123',
