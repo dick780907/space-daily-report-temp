@@ -98,28 +98,60 @@ function _clearLocalAuth() {
  * @returns {boolean} 初始化是否成功啟動
  */
 function initAuth(callback) {
-  // Firebase 未配置 → 啟用本地認證 Fallback
-  if (!initFirebase()) {
-    console.log('ℹ️ Firebase 未配置，使用本地認證模式');
-    _useLocalAuth = true;
-    _authInitialized = true;
-    const localAuth = _loadLocalAuth();
-    if (localAuth) {
-      _userProfile = localAuth;
-      _currentUser = { uid: 'local_' + localAuth.branchCode, isAnonymous: true };
-      if (callback) callback({ user: _currentUser, profile: _userProfile, loggedIn: true });
-    } else {
-      if (callback) callback({ user: null, profile: null, loggedIn: false });
-    }
+  // 檢查 Firebase 是否可用（等待 SDK 載入）
+  const firebaseReady = initFirebase();
+
+  if (!firebaseReady) {
+    // Firebase 暫時不可用，嘗試等待 SDK 載入
+    console.log('⏳ 等待 Firebase SDK 載入...');
+
+    let retryCount = 0;
+    const maxRetries = 30; // 最多等待 3 秒
+    const checkInterval = setInterval(() => {
+      retryCount++;
+      if (initFirebase()) {
+        clearInterval(checkInterval);
+        console.log('✅ Firebase SDK 已就緒，啟動認證監聽');
+        _setupAuthListener(callback);
+        return;
+      }
+      if (retryCount >= maxRetries) {
+        clearInterval(checkInterval);
+        console.log('ℹ️ Firebase SDK 未載入，啟用本地認證模式');
+        _enableLocalAuth(callback);
+      }
+    }, 100);
     return true;
   }
 
+  // Firebase 已就緒，直接啟動監聽
+  return _setupAuthListener(callback);
+}
+
+/**
+ * 啟用本地認證模式（Firebase 不可用時的 Fallback）
+ */
+function _enableLocalAuth(callback) {
+  _useLocalAuth = true;
+  _authInitialized = true;
+  const localAuth = _loadLocalAuth();
+  if (localAuth) {
+    _userProfile = localAuth;
+    _currentUser = { uid: 'local_' + localAuth.branchCode, isAnonymous: true };
+    if (callback) callback({ user: _currentUser, profile: _userProfile, loggedIn: true });
+  } else {
+    if (callback) callback({ user: null, profile: null, loggedIn: false });
+  }
+}
+
+/**
+ * 設置 Firebase Auth 狀態監聽
+ */
+function _setupAuthListener(callback) {
   const auth = getAuth();
   if (!auth) {
     console.warn('⚠️ Auth 實例無法取得，啟用本地認證 Fallback');
-    _useLocalAuth = true;
-    _authInitialized = true;
-    if (callback) callback({ user: null, profile: null, loggedIn: false });
+    _enableLocalAuth(callback);
     return false;
   }
 
@@ -255,7 +287,18 @@ async function loginUser(branchCode, password) {
 
   // ===== Firebase 匿名登入模式 =====
   if (!initFirebase()) {
-    return { success: false, error: 'Firebase 未初始化，無法登入' };
+    // Firebase 未初始化 → 自動降級到本地認證
+    console.warn('⚠️ Firebase 未初始化，自動降級到本地認證');
+    _useLocalAuth = true;
+    _userProfile = {
+      role: accountInfo.role,
+      branchCode: accountInfo.branchCode || null,
+      name: accountInfo.name,
+      account: branchCode
+    };
+    _currentUser = { uid: 'local_' + branchCode, isAnonymous: true };
+    _saveLocalAuth(_userProfile);
+    return { success: true, user: _currentUser };
   }
 
   const auth = getAuth();
@@ -278,7 +321,7 @@ async function loginUser(branchCode, password) {
 
     console.log('✅ 匿名登入成功, UID:', user.uid);
 
-    // Step 2: 寫入 users 集合（綁定館別權限）
+    // Step 2: 準備用戶資料
     const db = getDb();
     const userData = {
       role: accountInfo.role,
@@ -290,11 +333,31 @@ async function loginUser(branchCode, password) {
       userData.branchCode = accountInfo.branchCode;
     }
 
-    // 使用 set with merge 避免覆蓋既有資料
-    await db.collection('users').doc(user.uid).set(userData, { merge: true });
-    console.log('✅ 用戶資料已寫入 Firestore');
+    // Step 3: 寫入 Firestore users 集合（非阻塞，失敗不影響登入）
+    if (db) {
+      try {
+        await db.collection('users').doc(user.uid).set(userData, { merge: true });
+        console.log('✅ 用戶資料已寫入 Firestore');
+      } catch (dbErr) {
+        // Firestore 寫入失敗（可能是安全規則或網路問題）
+        // 不影響登入流程，用戶資料會保存在記憶體中
+        console.warn('⚠️ Firestore 寫入失敗（登入繼續）:', dbErr.message);
+        // 移除 serverTimestamp 後保存到本地
+        const localUserData = { ...userData };
+        delete localUserData.updatedAt;
+        _userProfile = {
+          ...localUserData,
+          branchCode: accountInfo.branchCode || null,
+          _localOnly: true
+        };
+        _currentUser = user;
+        _saveLocalAuth(_userProfile);
+        console.log('✅ 登入成功（本地模式）:', branchCode, '|', accountInfo.name);
+        return { success: true, user: user };
+      }
+    }
 
-    // Step 3: 更新本地狀態
+    // Step 4: 更新本地狀態
     _currentUser = user;
     _userProfile = { ...userData, branchCode: accountInfo.branchCode || null };
 
@@ -306,7 +369,7 @@ async function loginUser(branchCode, password) {
     console.error('❌ 登入失敗:', err.code, err.message);
     switch (err.code) {
       case 'auth/operation-not-allowed':
-        message = '匿名登入未啟用，請聯繫管理員'; break;
+        message = '匿名登入未啟用，請聯繫管理員在 Firebase Console > Authentication > Sign-in method 中啟用「匿名」提供者'; break;
       case 'auth/network-request-failed':
         message = '網路連線失敗，請檢查網路狀態'; break;
       default:
