@@ -87,7 +87,6 @@ function renderLogin() {
       ? '👑 總管理者' : `${selectedBranch.num} - ${selectedBranch.name}`;
     const branchColor = selectedBranch.num === '0'
       ? 'from-amber-400 to-amber-500' : selectedBranch.color;
-    const pwHint = selectedBranch.num === '0' ? 'Master@2024' : selectedBranch.code + '123';
 
     app.innerHTML = `
       <div class="min-h-screen flex flex-col bg-gray-50">
@@ -141,26 +140,17 @@ function renderLogin() {
                 class="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-xl
                        py-3.5 text-lg font-bold shadow-lg shadow-purple-200
                        hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]
-                       transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-4">
+                       transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 登入
               </button>
 
               <!-- 錯誤訊息 -->
-              <div id="login-error" class="hidden rounded-xl bg-red-50 border border-red-200 px-4 py-3 mb-4">
+              <div id="login-error" class="hidden mt-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
                 <div class="flex items-center gap-2">
-                  <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01"/></svg>
+                  <svg class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01"/>
+                  </svg>
                   <p id="login-error-text" class="text-sm text-red-600"></p>
-                </div>
-              </div>
-
-              <!-- 密碼提示 -->
-              <div class="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
-                <div class="flex items-start gap-2">
-                  <svg class="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01"/></svg>
-                  <div class="text-xs text-blue-600">
-                    <p class="font-medium">預設密碼：</p>
-                    <p class="font-mono">${pwHint}</p>
-                  </div>
                 </div>
               </div>
             </div>
