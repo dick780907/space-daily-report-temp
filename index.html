@@ -17,16 +17,9 @@
           },
           colors: {
             primary: {
-              50: '#faf5ff',
-              100: '#f3e8ff',
-              200: '#e9d5ff',
-              300: '#d8b4fe',
-              400: '#c084fc',
-              500: '#a855f7',
-              600: '#9333ea',
-              700: '#7c3aed',
-              800: '#6b21a8',
-              900: '#581c87',
+              50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 300: '#d8b4fe',
+              400: '#c084fc', 500: '#a855f7', 600: '#9333ea', 700: '#7c3aed',
+              800: '#6b21a8', 900: '#581c87',
             }
           }
         }
@@ -37,46 +30,42 @@
 </head>
 <body class="bg-slate-50 min-h-screen font-sans">
   <div id="app">
-    <!-- 靜態載入提示：JS 載入前顯示 -->
     <div id="loading-screen" class="min-h-screen flex flex-col items-center justify-center bg-gray-50">
       <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4"></div>
       <p class="text-gray-500 text-sm">系統載入中...</p>
     </div>
   </div>
 
-  <!-- ============ Core (本地腳本優先載入) ============ -->
-  <script src="js/utils.js?v=11"></script>
-  <script src="js/data.js?v=11"></script>
-  <script src="js/components.js?v=11"></script>
-  <script src="js/firebase-config.js?v=11"></script>
-  <script src="js/firebase-data.js?v=11"></script>
-  <script src="js/auth.js?v=11"></script>
+  <!-- ============ Core ============ -->
+  <script src="js/utils.js?v=12"></script>
+  <script src="js/data.js?v=12"></script>
+  <script src="js/queries.js?v=12"></script>
+  <script src="js/components.js?v=12"></script>
+  <script src="js/firebase-config.js?v=12"></script>
+  <script src="js/firebase-data.js?v=12"></script>
+  <script src="js/auth.js?v=12"></script>
 
   <!-- ============ Pages ============ -->
-  <script src="js/pages/login.js?v=11"></script>
-  <script src="js/pages/home.js?v=11"></script>
-  <script src="js/pages/branch.js?v=11"></script>
-  <script src="js/pages/admin.js?v=11"></script>
+  <script src="js/pages/login.js?v=12"></script>
+  <script src="js/pages/home.js?v=12"></script>
+  <script src="js/pages/branch.js?v=12"></script>
+  <script src="js/pages/admin.js?v=12"></script>
 
   <!-- ============ App Router ============ -->
-  <script src="js/app.js?v=11"></script>
+  <script src="js/app.js?v=12"></script>
 
-  <!-- ============ Firebase SDK (動態載入，不阻塞頁面) ============ -->
+  <!-- ============ Firebase SDK ============ -->
   <script>
-    // 只有配置了 Firebase 才載入 SDK
     (function() {
       if (typeof FIREBASE_CONFIG === 'undefined') return;
       if (!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey === 'YOUR_API_KEY') {
-        console.log('ℹ️ Firebase 未配置，使用本地認證模式');
+        console.log('Firebase 未配置，使用本地認證模式');
         return;
       }
-      // 動態載入 Firebase SDK
       function loadScript(src) {
         return new Promise(function(resolve, reject) {
           var s = document.createElement('script');
-          s.src = src;
-          s.onload = resolve;
-          s.onerror = reject;
+          s.src = src; s.onload = resolve; s.onerror = reject;
           document.body.appendChild(s);
         });
       }
@@ -89,11 +78,11 @@
           ]);
         })
         .then(function() {
-          console.log('✅ Firebase SDK 載入完成');
+          console.log('Firebase SDK 載入完成');
           if (typeof initFirebase === 'function') initFirebase();
         })
         .catch(function(err) {
-          console.warn('⚠️ Firebase SDK 載入失敗，使用本地模式:', err);
+          console.warn('Firebase SDK 載入失敗，使用本地模式:', err);
         });
     })();
   </script>
