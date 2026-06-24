@@ -29,7 +29,7 @@ function renderBranch(branchCode) {
           <div class="flex items-center gap-3">
             <span class="text-sm text-gray-500">
               <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full mr-1"></span>
-              ${escapeHtml(getCurrentUserDisplayName() || '')}
+              ${escapeHtml(getCurrentUserName() || '')}
             </span>
             <button
               id="branch-logout-btn"
