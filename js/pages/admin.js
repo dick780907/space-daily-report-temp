@@ -127,7 +127,7 @@ function loadTabContent(tabId) {
 }
 
 // ============================================
-// Tab 1: 日報總表（含郵件發送 + 總管理處填報）
+// Tab 1: 日報總表
 // ============================================
 
 function renderDailyTab(container) {
@@ -169,165 +169,7 @@ function renderDailyTab(container) {
         <div id="daily-email-status" class="mt-3"></div>
       </div>
 
-      <!-- 總管理處日報填報（折疊表單） -->
-      <div class="bg-white rounded-2xl shadow-lg shadow-gray-100/50 border border-gray-100 overflow-hidden">
-        <!-- 折疊標題列 -->
-        <button id="master-form-toggle" class="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-          <div class="flex items-center gap-3">
-            <span id="master-form-arrow" class="text-gray-400 transition-transform">▶</span>
-            <span class="font-semibold text-gray-800">🏢 總管理處日報填報</span>
-            <span id="master-form-status"></span>
-          </div>
-          <span class="text-xs text-gray-400">點擊展開/收合</span>
-        </button>
-        <!-- 表單內容（預設收合） -->
-        <div id="master-form-body" class="hidden border-t border-gray-100">
-          <div class="p-5 space-y-5">
-            <!-- 基本資訊 -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">日期 <span class="text-red-500">*</span></label>
-                <input type="date" id="master-date" value="${today}"
-                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">填表人 <span class="text-red-500">*</span></label>
-                <input type="text" id="master-author" placeholder="請輸入填表人姓名"
-                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-              </div>
-            </div>
-
-            <!-- 查詢區 -->
-            <div>
-              <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">🔍 查詢</h4>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs text-gray-500 mb-1">辦公室查詢</label>
-                  <input type="number" id="master-officeQuery" value="0" min="0"
-                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-500 mb-1">營業登記查詢</label>
-                  <input type="number" id="master-registerQuery" value="0" min="0"
-                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                </div>
-              </div>
-            </div>
-
-            <!-- 參觀 -->
-            <div>
-              <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">👥 參觀</h4>
-              <input type="number" id="master-visits" value="0" min="0"
-                class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-            </div>
-
-            <!-- 簽約區 -->
-            <div>
-              <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">📝 簽約</h4>
-              <div class="space-y-3">
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-xs text-gray-500 mb-1">辦公室續約（間數）</label>
-                    <input type="number" id="master-officeRenewCount" value="0" min="0"
-                      class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                  </div>
-                  <div>
-                    <label class="block text-xs text-gray-500 mb-1">辦公室續約（房號）</label>
-                    <input type="text" id="master-officeRenewRooms" placeholder="例：A01,A02"
-                      class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                  </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-xs text-gray-500 mb-1">辦公室新簽（間數）</label>
-                    <input type="number" id="master-officeNewCount" value="0" min="0"
-                      class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                  </div>
-                  <div>
-                    <label class="block text-xs text-gray-500 mb-1">辦公室新簽（房號）</label>
-                    <input type="text" id="master-officeNewRooms" placeholder="例：B01,B02"
-                      class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                  </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-xs text-gray-500 mb-1">營業登記新簽</label>
-                    <input type="number" id="master-registerNew" value="0" min="0"
-                      class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                  </div>
-                  <div>
-                    <label class="block text-xs text-gray-500 mb-1">營業登記續約</label>
-                    <input type="number" id="master-registerRenew" value="0" min="0"
-                      class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 退租 -->
-            <div>
-              <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">🚪 退租</h4>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs text-gray-500 mb-1">辦公室退租（間數）</label>
-                  <input type="number" id="master-officeCancelCount" value="0" min="0"
-                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-500 mb-1">辦公室退租（房號）</label>
-                  <input type="text" id="master-officeCancelRooms" placeholder="例：C01"
-                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                </div>
-              </div>
-            </div>
-
-            <!-- 付定 -->
-            <div>
-              <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">💰 付定</h4>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-xs text-gray-500 mb-1">辦公室付定（間數）</label>
-                  <input type="number" id="master-officeDepositCount" value="0" min="0"
-                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-500 mb-1">辦公室付定（房號）</label>
-                  <input type="text" id="master-officeDepositRooms" placeholder="例：D01"
-                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                </div>
-              </div>
-            </div>
-
-            <!-- 出租率 -->
-            <div>
-              <h4 class="text-sm font-semibold text-gray-500 mb-2 flex items-center gap-1">📊 出租率</h4>
-              <div class="grid grid-cols-2 gap-4 mb-2">
-                <div>
-                  <label class="block text-xs text-gray-500 mb-1">已租間數</label>
-                  <input type="number" id="master-rentedCount" value="0" min="0"
-                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-500 mb-1">總間數</label>
-                  <input type="number" id="master-totalCount" value="0" min="0"
-                    class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-base focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
-                </div>
-              </div>
-              <div class="text-center py-3 bg-purple-50 rounded-xl">
-                <span class="text-gray-600 text-sm">出租率：</span>
-                <span id="master-occupancy-rate" class="text-2xl font-bold text-purple-700">0%</span>
-              </div>
-            </div>
-
-            <!-- 儲存按鈕 -->
-            <button id="master-save-btn"
-              class="w-full bg-gradient-to-r from-purple-600 to-purple-500 text-white px-6 py-3 rounded-xl font-medium shadow-lg shadow-purple-200 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all text-lg">
-              ✓ 儲存總管理處日報
-            </button>
-          </div>
-        </div>
-      </div>
-
+      <!-- 日報表格 -->
       <div class="bg-white rounded-2xl shadow-lg shadow-gray-100/50 border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto" id="daily-table-wrapper"></div>
       </div>
@@ -338,38 +180,13 @@ function renderDailyTab(container) {
   dateInput.addEventListener('change', () => {
     refreshDailyTable(dateInput.value);
     refreshEmailButton(dateInput.value);
-    // 同步更新總管理處表單日期
-    const masterDate = document.getElementById('master-date');
-    if (masterDate) {
-      masterDate.value = dateInput.value;
-      loadMasterReport();
-    }
   });
 
   // 匯出 CSV
   document.getElementById('daily-export-btn').addEventListener('click', () => {
     const date = dateInput.value;
     const { rows, totals } = generateDailySummary(date);
-    // 加入總管理處數據
-    const masterReport = getReport('MASTER', date);
-    const masterRow = masterReport ? {
-      branchName: '總管理處', filled: true, author: masterReport.author || '',
-      officeQuery: masterReport.officeQuery || 0, registerQuery: masterReport.registerQuery || 0,
-      visits: masterReport.visits || 0, officeRenew: masterReport.officeRenew?.count || 0,
-      officeNew: masterReport.officeNew?.count || 0, registerNew: masterReport.registerNew || 0,
-      registerRenew: masterReport.registerRenew || 0,
-      signTotal: calcSignTotal(masterReport),
-      officeCancel: masterReport.officeCancel?.count || 0,
-      officeDeposit: masterReport.officeDeposit?.count || 0,
-      occupancyRate: calcOccupancyRate(masterReport.rentedCount || 0, masterReport.totalCount || 0)
-    } : {
-      branchName: '總管理處', filled: false, author: '',
-      officeQuery: 0, registerQuery: 0, visits: 0,
-      officeRenew: 0, officeNew: 0, registerNew: 0, registerRenew: 0,
-      signTotal: 0, officeCancel: 0, officeDeposit: 0, occupancyRate: 0
-    };
-    const allRows = [...rows, masterRow];
-    const csvRows = allRows.map(r => ({
+    const csvRows = rows.map(r => ({
       '館別': r.branchName, '狀態': r.filled ? '已填報' : '未填報', '填表人': r.author || '',
       '辦公室查詢': r.officeQuery, '營業登記查詢': r.registerQuery, '參觀': r.visits,
       '辦公室續約': r.officeRenew, '辦公室新簽': r.officeNew,
@@ -377,11 +194,12 @@ function renderDailyTab(container) {
       '簽約合計': r.signTotal, '退租': r.officeCancel, '付定': r.officeDeposit, '出租率': r.occupancyRate
     }));
     csvRows.push({
-      '館別': '全館合計', '狀態': '', '填表人': '', '辦公室查詢': totals.officeQuery + masterRow.officeQuery, '營業登記查詢': totals.registerQuery + masterRow.registerQuery,
-      '參觀': totals.visits + masterRow.visits, '辦公室續約': totals.officeRenew + masterRow.officeRenew, '辦公室新簽': totals.officeNew + masterRow.officeNew,
-      '營業登記新簽': totals.registerNew + masterRow.registerNew, '營業登記續約': totals.registerRenew + masterRow.registerRenew,
-      '簽約合計': totals.signTotal + masterRow.signTotal, '退租': totals.officeCancel + masterRow.officeCancel, '付定': totals.officeDeposit + masterRow.officeDeposit,
-      '出租率': calcOccupancyRate((totals.rentedCount || 0) + (masterReport?.rentedCount || 0), (totals.totalCount || 0) + (masterReport?.totalCount || 0))
+      '館別': '全館合計', '狀態': '', '填表人': '',
+      '辦公室查詢': totals.officeQuery, '營業登記查詢': totals.registerQuery,
+      '參觀': totals.visits, '辦公室續約': totals.officeRenew, '辦公室新簽': totals.officeNew,
+      '營業登記新簽': totals.registerNew, '營業登記續約': totals.registerRenew,
+      '簽約合計': totals.signTotal, '退租': totals.officeCancel, '付定': totals.officeDeposit,
+      '出租率': totals.occupancyRate
     });
     downloadCSV(`日報總表_${date.replace(/-/g,'')}.csv`, csvRows);
     showToast('CSV 匯出成功', 'success');
@@ -401,150 +219,6 @@ function renderDailyTab(container) {
 
   refreshDailyTable(dateInput.value);
   refreshEmailButton(dateInput.value);
-
-  // 綁定總管理處表單事件
-  bindMasterFormEvents();
-  loadMasterReport();
-}
-
-// ============================================
-// 總管理處日報填報 - 輔助函數
-// ============================================
-
-function bindMasterFormEvents() {
-  // 折疊/展開
-  const toggle = document.getElementById('master-form-toggle');
-  const body = document.getElementById('master-form-body');
-  const arrow = document.getElementById('master-form-arrow');
-  if (toggle && body) {
-    toggle.addEventListener('click', () => {
-      body.classList.toggle('hidden');
-      arrow.textContent = body.classList.contains('hidden') ? '▶' : '▼';
-    });
-  }
-
-  // 日期變更載入
-  const dateInput = document.getElementById('master-date');
-  if (dateInput) {
-    dateInput.addEventListener('change', loadMasterReport);
-  }
-
-  // 出租率即時計算
-  ['master-rentedCount', 'master-totalCount'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', updateMasterOccupancy);
-  });
-
-  // 儲存按鈕
-  const saveBtn = document.getElementById('master-save-btn');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', saveMasterReport);
-  }
-}
-
-function saveMasterReport() {
-  const date = document.getElementById('master-date').value;
-  const author = document.getElementById('master-author').value.trim();
-  if (!date || !author) {
-    showToast('請填寫日期和填表人', 'error');
-    return;
-  }
-  const report = {
-    id: 'MASTER_' + date,
-    branch: 'MASTER',
-    date: date,
-    author: author,
-    officeQuery: parseInt(document.getElementById('master-officeQuery').value || '0', 10),
-    registerQuery: parseInt(document.getElementById('master-registerQuery').value || '0', 10),
-    visits: parseInt(document.getElementById('master-visits').value || '0', 10),
-    officeRenew: {
-      count: parseInt(document.getElementById('master-officeRenewCount').value || '0', 10),
-      rooms: document.getElementById('master-officeRenewRooms').value || ''
-    },
-    officeNew: {
-      count: parseInt(document.getElementById('master-officeNewCount').value || '0', 10),
-      rooms: document.getElementById('master-officeNewRooms').value || ''
-    },
-    registerNew: parseInt(document.getElementById('master-registerNew').value || '0', 10),
-    registerRenew: parseInt(document.getElementById('master-registerRenew').value || '0', 10),
-    officeCancel: {
-      count: parseInt(document.getElementById('master-officeCancelCount').value || '0', 10),
-      rooms: document.getElementById('master-officeCancelRooms').value || ''
-    },
-    officeDeposit: {
-      count: parseInt(document.getElementById('master-officeDepositCount').value || '0', 10),
-      rooms: document.getElementById('master-officeDepositRooms').value || ''
-    },
-    rentedCount: parseInt(document.getElementById('master-rentedCount').value || '0', 10),
-    totalCount: parseInt(document.getElementById('master-totalCount').value || '0', 10)
-  };
-  saveReport(report);
-  showToast('總管理處日報儲存成功！', 'success');
-  refreshDailyTable(date);
-  updateMasterFormStatus(date);
-}
-
-function loadMasterReport() {
-  const date = document.getElementById('master-date').value;
-  if (!date) return;
-  const report = getReport('MASTER', date);
-  if (report) {
-    document.getElementById('master-author').value = report.author || '';
-    document.getElementById('master-officeQuery').value = report.officeQuery || 0;
-    document.getElementById('master-registerQuery').value = report.registerQuery || 0;
-    document.getElementById('master-visits').value = report.visits || 0;
-    document.getElementById('master-officeRenewCount').value = report.officeRenew?.count || 0;
-    document.getElementById('master-officeRenewRooms').value = report.officeRenew?.rooms || '';
-    document.getElementById('master-officeNewCount').value = report.officeNew?.count || 0;
-    document.getElementById('master-officeNewRooms').value = report.officeNew?.rooms || '';
-    document.getElementById('master-registerNew').value = report.registerNew || 0;
-    document.getElementById('master-registerRenew').value = report.registerRenew || 0;
-    document.getElementById('master-officeCancelCount').value = report.officeCancel?.count || 0;
-    document.getElementById('master-officeCancelRooms').value = report.officeCancel?.rooms || '';
-    document.getElementById('master-officeDepositCount').value = report.officeDeposit?.count || 0;
-    document.getElementById('master-officeDepositRooms').value = report.officeDeposit?.rooms || '';
-    document.getElementById('master-rentedCount').value = report.rentedCount || 0;
-    document.getElementById('master-totalCount').value = report.totalCount || 0;
-  } else {
-    document.getElementById('master-author').value = '';
-    document.getElementById('master-officeQuery').value = 0;
-    document.getElementById('master-registerQuery').value = 0;
-    document.getElementById('master-visits').value = 0;
-    document.getElementById('master-officeRenewCount').value = 0;
-    document.getElementById('master-officeRenewRooms').value = '';
-    document.getElementById('master-officeNewCount').value = 0;
-    document.getElementById('master-officeNewRooms').value = '';
-    document.getElementById('master-registerNew').value = 0;
-    document.getElementById('master-registerRenew').value = 0;
-    document.getElementById('master-officeCancelCount').value = 0;
-    document.getElementById('master-officeCancelRooms').value = '';
-    document.getElementById('master-officeDepositCount').value = 0;
-    document.getElementById('master-officeDepositRooms').value = '';
-    document.getElementById('master-rentedCount').value = 0;
-    document.getElementById('master-totalCount').value = 0;
-  }
-  updateMasterOccupancy();
-  updateMasterFormStatus(date);
-}
-
-function updateMasterOccupancy() {
-  const rented = parseInt(document.getElementById('master-rentedCount')?.value || '0', 10);
-  const total = parseInt(document.getElementById('master-totalCount')?.value || '0', 10);
-  const rate = calcOccupancyRate(rented, total);
-  const el = document.getElementById('master-occupancy-rate');
-  if (el) el.textContent = rate + '%';
-}
-
-function updateMasterFormStatus(date) {
-  const report = getReport('MASTER', date);
-  const statusEl = document.getElementById('master-form-status');
-  if (statusEl) {
-    if (report) {
-      statusEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">已填報</span>';
-    } else {
-      statusEl.innerHTML = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-600">未填報</span>';
-    }
-  }
 }
 
 function refreshEmailButton(date) {
@@ -586,54 +260,6 @@ function refreshEmailButton(date) {
 function refreshDailyTable(date) {
   const wrapper = document.getElementById('daily-table-wrapper');
   const { rows, totals } = generateDailySummary(date);
-
-  // 取得總管理處數據
-  const masterReport = getReport('MASTER', date);
-  const masterRow = masterReport ? {
-    branchName: '總管理處',
-    filled: true,
-    author: masterReport.author || '',
-    officeQuery: masterReport.officeQuery || 0,
-    registerQuery: masterReport.registerQuery || 0,
-    visits: masterReport.visits || 0,
-    officeRenew: masterReport.officeRenew?.count || 0,
-    officeNew: masterReport.officeNew?.count || 0,
-    registerNew: masterReport.registerNew || 0,
-    registerRenew: masterReport.registerRenew || 0,
-    signTotal: calcSignTotal(masterReport),
-    officeCancel: masterReport.officeCancel?.count || 0,
-    officeDeposit: masterReport.officeDeposit?.count || 0,
-    rentedCount: masterReport.rentedCount || 0,
-    totalCount: masterReport.totalCount || 0,
-    occupancyRate: calcOccupancyRate(masterReport.rentedCount || 0, masterReport.totalCount || 0)
-  } : {
-    branchName: '總管理處',
-    filled: false,
-    author: '',
-    officeQuery: 0, registerQuery: 0, visits: 0,
-    officeRenew: 0, officeNew: 0, registerNew: 0, registerRenew: 0,
-    signTotal: 0, officeCancel: 0, officeDeposit: 0,
-    rentedCount: 0, totalCount: 0, occupancyRate: 0
-  };
-
-  // 全館合計包含總管理處
-  const allRows = [...rows, masterRow];
-  const grandTotals = {
-    officeQuery: allRows.reduce((s, r) => s + r.officeQuery, 0),
-    registerQuery: allRows.reduce((s, r) => s + r.registerQuery, 0),
-    visits: allRows.reduce((s, r) => s + r.visits, 0),
-    officeRenew: allRows.reduce((s, r) => s + r.officeRenew, 0),
-    officeNew: allRows.reduce((s, r) => s + r.officeNew, 0),
-    registerNew: allRows.reduce((s, r) => s + r.registerNew, 0),
-    registerRenew: allRows.reduce((s, r) => s + r.registerRenew, 0),
-    signTotal: allRows.reduce((s, r) => s + r.signTotal, 0),
-    officeCancel: allRows.reduce((s, r) => s + r.officeCancel, 0),
-    officeDeposit: allRows.reduce((s, r) => s + r.officeDeposit, 0),
-    occupancyRate: calcOccupancyRate(
-      allRows.reduce((s, r) => s + (r.rentedCount || 0), 0),
-      allRows.reduce((s, r) => s + (r.totalCount || 0), 0)
-    )
-  };
 
   wrapper.innerHTML = `
     <table class="w-full min-w-[1400px] text-sm">
@@ -684,42 +310,19 @@ function refreshDailyTable(date) {
             </td>
           </tr>
         `).join('')}
-        <!-- 總管理處行 -->
-        <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors bg-sky-50">
-          <td class="px-3 py-3 font-medium text-sky-800 whitespace-nowrap">🏢 總管理處</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">
-            ${masterRow.filled
-              ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">已填報</span>'
-              : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-600">未填報</span>'}
-          </td>
-          <td class="px-3 py-3 text-gray-600 whitespace-nowrap">${escapeHtml(masterRow.author)}</td>
-          <td class="px-3 py-3 text-center text-gray-700 whitespace-nowrap">${masterRow.officeQuery}</td>
-          <td class="px-3 py-3 text-center text-gray-700 whitespace-nowrap">${masterRow.registerQuery}</td>
-          <td class="px-3 py-3 text-center text-gray-700 whitespace-nowrap">${masterRow.visits}</td>
-          <td class="px-3 py-3 text-center text-orange-600 whitespace-nowrap font-medium">${masterRow.officeRenew}</td>
-          <td class="px-3 py-3 text-center text-blue-600 whitespace-nowrap font-medium">${masterRow.officeNew}</td>
-          <td class="px-3 py-3 text-center text-blue-600 whitespace-nowrap font-medium">${masterRow.registerNew}</td>
-          <td class="px-3 py-3 text-center text-orange-600 whitespace-nowrap font-medium">${masterRow.registerRenew}</td>
-          <td class="px-3 py-3 text-center font-bold text-gray-800 whitespace-nowrap">${masterRow.signTotal}</td>
-          <td class="px-3 py-3 text-center text-gray-700 whitespace-nowrap">${masterRow.officeCancel}</td>
-          <td class="px-3 py-3 text-center text-gray-700 whitespace-nowrap">${masterRow.officeDeposit}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">
-            <span class="font-semibold ${masterRow.occupancyRate >= 80 ? 'text-green-600' : masterRow.occupancyRate >= 50 ? 'text-yellow-600' : 'text-red-500'}">${masterRow.occupancyRate}%</span>
-          </td>
-        </tr>
         <tr class="bg-purple-50 font-semibold text-purple-900">
           <td class="px-3 py-3 whitespace-nowrap" colspan="2">全館合計</td><td class="px-3 py-3"></td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.officeQuery}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.registerQuery}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.visits}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.officeRenew}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.officeNew}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.registerNew}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.registerRenew}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.signTotal}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.officeCancel}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap">${grandTotals.officeDeposit}</td>
-          <td class="px-3 py-3 text-center whitespace-nowrap"><span class="font-bold">${grandTotals.occupancyRate}%</span></td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.officeQuery}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.registerQuery}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.visits}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.officeRenew}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.officeNew}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.registerNew}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.registerRenew}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.signTotal}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.officeCancel}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap">${totals.officeDeposit}</td>
+          <td class="px-3 py-3 text-center whitespace-nowrap"><span class="font-bold">${totals.occupancyRate}%</span></td>
         </tr>
       </tbody>
     </table>
@@ -727,7 +330,7 @@ function refreshDailyTable(date) {
 }
 
 // ============================================
-// Tab 2: 分館日報編輯（總管理者直接修改各分館日報）
+// Tab 2: 分館日報編輯
 // ============================================
 
 function renderBranchEditTab(container) {
